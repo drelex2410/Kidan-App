@@ -30,6 +30,7 @@
         const lens = this.$refs.lens;
         const result = this.$refs.result;
         const resultImage = this.$refs.resultImage;
+        const zoomFactor = 0.5;
   
         this.showLens = true;
   
@@ -45,8 +46,8 @@
         lens.style.left = x + 'px';
         lens.style.top = y + 'px';
   
-        this.cx = result.offsetWidth / lens.offsetWidth;
-        this.cy = result.offsetHeight / lens.offsetHeight;
+        this.cx = (result.offsetWidth / lens.offsetWidth) * zoomFactor;
+        this.cy = (result.offsetHeight / lens.offsetHeight) * zoomFactor;
   
         resultImage.style.width = image.width * this.cx + 'px';
         resultImage.style.height = image.height * this.cy + 'px';

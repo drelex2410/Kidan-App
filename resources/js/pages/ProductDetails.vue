@@ -1,5 +1,8 @@
 <template>
-  <v-container class="pt-7 single-product-page">
+  <v-container
+    fluid
+    class="pt-7 single-product-page"
+  >
     <v-row
       align="start"
       class="product-layout"
@@ -20,8 +23,8 @@
               :is-loading="detailsLoading"
               :gallery-imgaes="productDetails.photos"
               :selectedVariation="selectedVariation"
-              :desktop-image-width="480"
-              :desktop-image-height="588"
+              :desktop-image-width="520"
+              :desktop-image-height="680"
             />
           </v-col>
           <v-col
@@ -41,62 +44,36 @@
                 class="mb-4"
               >
                 <div
-                  v-if="sizeVariationOptions.length > 0"
-                  class="mb-3"
-                >
-                  <div class="fw-600 fs-14 mb-2">Select Size</div>
-                  <div class="d-flex gap-2">
-                    <label
-                      v-for="(variation_option, i) in sizeVariationOptions"
-                      :key="variation_option.id || i"
-                    >
-                      <label
-                        v-for="(value, j) in variation_option.values"
-                        :key="j"
-                        class="size-option me-2"
-                      >
-                        <input
-                          v-model="chooseOptions[i]"
-                          type="radio"
-                          :name="`option_${variation_option.id}`"
-                          :value="variation_option.id + ':' + value.id"
-                          @change="optionChosen"
-                          class="d-none"
-                        />
-                        <span class="size-label">{{ value.name }}</span>
-                      </label>
-                    </label>
-                  </div>
-                </div>
-
-                <div
-                  v-if="colorVariationOptions.length > 0"
+                  v-for="(variationOption, optionIndex) in variationOptions"
+                  :key="variationOption.id || optionIndex"
                   class="mb-4"
                 >
-                  <div class="fw-600 fs-14 mb-2">Select Color</div>
+                  <div class="fw-600 fs-14 mb-2">
+                    Select {{ variationOption.name || "Option" }}
+                  </div>
                   <div class="d-flex gap-2">
                     <label
-                      v-for="(variation_option, i) in colorVariationOptions"
-                      :key="variation_option.id || i"
+                      v-for="(value, valueIndex) in safeVariationValues(variationOption)"
+                      :key="value.id || valueIndex"
+                      :class="[isColorVariation(variationOption) ? 'color-option' : 'size-option', 'me-2']"
                     >
-                      <label
-                        v-for="(value, j) in variation_option.values"
-                        :key="j"
-                        class="color-option me-2"
-                      >
-                        <input
-                          v-model="chooseOptions[i]"
-                          type="radio"
-                          :name="`option_${variation_option.id}`"
-                          :value="variation_option.id + ':' + value.id"
-                          @change="optionChosen"
-                          class="d-none"
-                        />
-                        <span 
-                          class="color-swatch"
-                          :style="{backgroundColor: value.name}"
-                        ></span>
-                      </label>
+                      <input
+                        v-model="chooseOptions[optionIndex]"
+                        type="radio"
+                        :name="`option_${variationOption.id}`"
+                        :value="variationOption.id + ':' + value.id"
+                        @change="optionChosen"
+                        class="d-none"
+                      />
+                      <span
+                        v-if="isColorVariation(variationOption)"
+                        class="color-swatch"
+                        :style="{ backgroundColor: value.name || '#ddd' }"
+                      ></span>
+                      <span
+                        v-else
+                        class="size-label"
+                      >{{ value.name }}</span>
                     </label>
                   </div>
                 </div>
@@ -354,16 +331,6 @@ export default {
         ? this.productDetails.variation_options
         : [];
     },
-    sizeVariationOptions() {
-      return this.variationOptions.filter(
-        (option) => this.normalizeVariationName(option?.name) === "size"
-      );
-    },
-    colorVariationOptions() {
-      return this.variationOptions.filter(
-        (option) => this.normalizeVariationName(option?.name) === "color"
-      );
-    },
     selectedVariationData() {
       if (
         this.selectedVariation &&
@@ -562,16 +529,24 @@ export default {
     normalizeVariationName(name) {
       return typeof name === "string" ? name.toLowerCase() : "";
     },
+    isColorVariation(option) {
+      return this.normalizeVariationName(option?.name) === "color";
+    },
+    safeVariationValues(option) {
+      return Array.isArray(option?.values) ? option.values : [];
+    },
     optionChosen() {
       let chooseOptions = this.chooseOptions.filter((el) => el != "");
       if (
         this.variationOptions.length === chooseOptions.length
       ) {
-        let filteredVariations = this.productDetails.variations;
+        let filteredVariations = Array.isArray(this.productDetails.variations)
+          ? this.productDetails.variations
+          : [];
 
         chooseOptions.forEach((chosenOption) => {
           filteredVariations = filteredVariations.filter((variation) => {
-            return variation.code.includes(chosenOption);
+            return variation?.code?.includes(chosenOption);
           });
         });
 
@@ -635,13 +610,17 @@ export default {
 <style scoped>
 .single-product-page {
   overflow-x: clip;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 32px 28px 0;
 }
 
 .product-layout {
   margin: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 32px;
+  gap: 28px;
 }
 
 .product-main-column,
@@ -649,6 +628,9 @@ export default {
 .product-info-column,
 .product-sidebar-column {
   min-width: 0;
+  width: auto;
+  max-width: none;
+  flex: none;
 }
 
 .product-main-grid {
@@ -660,6 +642,7 @@ export default {
 
 .product-info-column {
   align-self: start;
+  width: 100%;
 }
 
 .product-info-column :deep(.d-flex.gap-2) {
@@ -677,6 +660,25 @@ export default {
   min-width: 0;
 }
 
+.product-info-column h1 {
+  max-width: 720px;
+  margin-bottom: 18px !important;
+}
+
+.product-info-column .opacity-60.fs-14 {
+  display: block;
+  max-width: 680px;
+  line-height: 1.7;
+}
+
+.product-info-column .details-section {
+  margin-top: 8px;
+}
+
+.product-info-column .v-btn {
+  min-height: 54px;
+}
+
 .single-product-related-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -685,6 +687,10 @@ export default {
 
 .single-product-related-panel {
   width: 100%;
+}
+
+.single-product-related-panel .fw-600 {
+  margin-bottom: 18px !important;
 }
 
 .size-option input[type="radio"]:checked + .size-label {
@@ -743,7 +749,7 @@ export default {
 
 @media (max-width: 767px) {
   .single-product-page {
-    padding-inline: 16px;
+    padding: 20px 16px 0;
   }
 
   .single-product-related-list {
@@ -752,31 +758,57 @@ export default {
 }
 
 @media (min-width: 768px) and (max-width: 1263px) {
+  .single-product-page {
+    max-width: 1100px;
+    padding: 28px 24px 0;
+  }
+
+  .product-layout > .product-main-column,
+  .product-layout > .product-sidebar-column,
+  .product-main-grid > .product-gallery-column,
+  .product-main-grid > .product-info-column {
+    width: auto;
+    max-width: none;
+    flex: none;
+  }
+
   .product-main-grid {
-    grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
-    column-gap: 24px;
+    grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
   }
 
   .single-product-related-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
   }
 }
 
 @media (min-width: 1264px) {
+  .product-layout > .product-main-column,
+  .product-layout > .product-sidebar-column,
+  .product-main-grid > .product-gallery-column,
+  .product-main-grid > .product-info-column {
+    width: auto;
+    max-width: none;
+    flex: none;
+  }
+
   .product-layout {
-    grid-template-columns: minmax(0, 1fr) 234px;
-    column-gap: 32px;
+    grid-template-columns: minmax(0, 1fr) 268px;
+    column-gap: 40px;
     align-items: start;
   }
 
   .product-main-grid {
-    grid-template-columns: 480px minmax(0, 1fr);
-    column-gap: 32px;
+    grid-template-columns: 520px minmax(420px, 1fr);
+    column-gap: 40px;
     align-items: start;
   }
 
   .product-info-column {
-    padding-right: 8px;
+    padding-top: 8px;
+    padding-right: 16px;
   }
 
   .main-bar,
@@ -785,7 +817,7 @@ export default {
   }
 
   .right-bar {
-    width: 234px;
+    width: 268px;
   }
 
   .product-sidebar-column {
@@ -794,12 +826,12 @@ export default {
 
   .single-product-related-list {
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
+    gap: 24px;
   }
 
   :deep(.single-product-related-card) {
-    width: 234px;
-    max-width: 234px;
+    width: 268px;
+    max-width: 268px;
   }
 
   :deep(.single-product-related-card .v-row) {
@@ -812,21 +844,35 @@ export default {
   }
 
   :deep(.single-product-related-card .lv-product-card) {
-    width: 234px;
-    min-height: 289px;
+    width: 268px;
+    min-height: 332px;
   }
 
   :deep(.single-product-related-card .size-70px) {
     width: 100%;
-    height: 180px;
+    height: 220px;
   }
 
   :deep(.single-product-related-card .lv-product-details) {
-    padding: 14px 0 0;
+    padding: 16px 0 0;
   }
 
   :deep(.single-product-related-card .product-box-two .lv-product-details) {
-    padding: 14px 0 0;
+    padding: 16px 0 0;
+  }
+}
+
+@media (min-width: 1440px) {
+  .single-product-page {
+    padding: 40px 32px 0;
+  }
+
+  .product-layout {
+    column-gap: 44px;
+  }
+
+  .product-main-grid {
+    column-gap: 44px;
   }
 }
 </style>

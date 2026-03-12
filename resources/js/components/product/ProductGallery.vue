@@ -172,7 +172,7 @@ export default {
 
 .mySwiper2 {
     width: 100%;
-    aspect-ratio: 480 / 588;
+    aspect-ratio: 520 / 680;
     height: auto;
     width: 100%;
 }
@@ -180,12 +180,13 @@ export default {
 .mySwiper {
     height: auto;
     box-sizing: border-box;
-    padding: 10px 0;
+    padding: 14px 0 0;
 }
 
 .mySwiper .swiper-slide {
     width: 25%;
-    height: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1.15;
     opacity: 0.4;
 }
 
@@ -197,6 +198,14 @@ export default {
     display: block;
     width: 100%;
     height: 100%;
+    object-fit: cover;
+}
+
+:deep(.mySwiper2 .image-container) {
+    height: 100%;
+}
+
+:deep(.mySwiper2 .product-image) {
     object-fit: cover;
 }
 
