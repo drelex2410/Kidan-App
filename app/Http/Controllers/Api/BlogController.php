@@ -10,13 +10,19 @@ use Illuminate\Http\Request;
 
 class BlogController extends Controller
 {
+    protected function publishedBlogsQuery()
+    {
+        return Blog::latest()->where('status', 1);
+    }
+
     public function index(Request $request)
     {
         $category = $request->category_slug ? BlogCategory::where('slug', $request->category_slug)->first() : null;
         $search_keyword             = $request->searchKeyword;
         $category_id                = optional($category)->id;
+        $perPage                    = max(1, min((int) $request->input('per_page', 12), 24));
 
-        $blogs = Blog::latest()->where('status', 1);
+        $blogs = $this->publishedBlogsQuery();
         // search keyword check
         if ($search_keyword != null) {
             $blogs->where(function ($q) use ($search_keyword) {
@@ -31,7 +37,7 @@ class BlogController extends Controller
             $blogs->where('category_id', $category_id);
         }
 
-        $collection = new BlogCollection($blogs->paginate(12));
+        $collection = new BlogCollection($blogs->paginate($perPage));
 
         return response()->json([
             'success' => true,
@@ -44,12 +50,22 @@ class BlogController extends Controller
         ]);
     }
 
+    public function recent(Request $request)
+    {
+        $limit = max(1, min((int) $request->input('limit', 6), 6));
+
+        return response()->json([
+            'success' => true,
+            'blogs' => new BlogCollection($this->publishedBlogsQuery()->take($limit)->get()),
+        ]);
+    }
+
     public function indexCategory()
     {
         return [
             'success' => true,
             'data' => BlogCategory::latest()->get(),
-            'recentBlogs' => new BlogCollection(Blog::latest()->where('status', 1)->take(5)->get()),
+            'recentBlogs' => new BlogCollection($this->publishedBlogsQuery()->take(5)->get()),
         ];
     }
 
@@ -60,7 +76,7 @@ class BlogController extends Controller
             return [
                 'success' => true,
                 'data' => new BlogSingleCollection($blog),
-                'recentBlogs' => new BlogCollection(Blog::latest()->where('status', 1)->take(5)->get()),
+                'recentBlogs' => new BlogCollection($this->publishedBlogsQuery()->take(5)->get()),
             ];
         } else {
             return response()->json([

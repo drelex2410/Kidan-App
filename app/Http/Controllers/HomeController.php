@@ -268,6 +268,7 @@ class HomeController extends Controller
             $settings['offlinePaymentMethods'] = json_decode(ManualPaymentResource::collection(ManualPaymentMethod::all())->toJson());
         }
 
+        // The live storefront SPA mounts from frontend.app and composes the homepage through resources/js/components/App.vue.
         return view('frontend.app', compact('settings', 'meta'));
     }
 }

@@ -65,10 +65,9 @@ export default {
       if (homeRes.data.success) {
         this.data = homeRes.data.data;
       }
-      // Fetch first blog for media
-      const blogRes = await this.call_api("get", "all-blogs/search");
-      if (blogRes.data.success && blogRes.data.blogs.data && blogRes.data.blogs.data.length > 0) {
-        const firstBlog = blogRes.data.blogs.data[0];
+      // Fetch latest published homepage story for media
+      const firstBlog = await this.fetchHomepageLeadStory();
+      if (firstBlog) {
         this.mediaUrl = firstBlog.banner;
         this.mediaType = firstBlog.type || 'image';
       }
@@ -79,6 +78,43 @@ export default {
     }
   },
   methods: {
+    async fetchHomepageLeadStory() {
+      const requests = [
+        "recent-blogs?limit=1",
+        "all-blogs/search?page=1&per_page=1",
+        "all-blog-categories",
+      ];
+
+      for (const url of requests) {
+        try {
+          const res = await this.call_api("get", url);
+          const blogs = this.extractBlogsFromResponse(res?.data);
+
+          if (blogs.length > 0) {
+            return blogs[0];
+          }
+        } catch (error) {
+          console.warn(`Homepage lead story request failed for ${url}`, error);
+        }
+      }
+
+      return null;
+    },
+    extractBlogsFromResponse(data) {
+      if (!data || data.success === false) {
+        return [];
+      }
+
+      if (Array.isArray(data?.blogs?.data)) {
+        return data.blogs.data;
+      }
+
+      if (Array.isArray(data?.recentBlogs?.data)) {
+        return data.recentBlogs.data;
+      }
+
+      return [];
+    },
     getEmbedUrl(url) {
       // Convert YouTube URL to embed format
       if (url.includes('youtube.com') || url.includes('youtu.be')) {

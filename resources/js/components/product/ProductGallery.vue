@@ -37,7 +37,11 @@
                 </v-col>
             </v-row>
         </template>
-        <div class="" v-show="!isLoading">
+        <div
+            class="product-gallery-shell"
+            :style="galleryStyle"
+            v-show="!isLoading"
+        >
             <!--  -->
             
                 <swiper 
@@ -91,11 +95,24 @@ export default {
         isLoading: { type: Boolean, default: true },
         galleryImgaes: { type: Array, required: true, default: () => [] },
         selectedVariation: { type: Object, default: () => {} },
+        desktopImageWidth: { type: Number, default: null },
+        desktopImageHeight: { type: Number, default: null },
     },
     components: {
         Swiper,
         SwiperSlide,
         ProductImageZoom
+    },
+    computed: {
+        galleryStyle() {
+            const width = this.desktopImageWidth ? `${this.desktopImageWidth}px` : "100%";
+            const height = this.desktopImageHeight ? `${this.desktopImageHeight}px` : "auto";
+
+            return {
+                "--gallery-desktop-width": width,
+                "--gallery-desktop-height": height,
+            };
+        },
     },
     setup() {
         const thumbsSwiper = ref(null);
@@ -114,6 +131,10 @@ export default {
 </script>
 
 <style scoped>
+.product-gallery-shell {
+    width: 100%;
+}
+
 .swiper {
     width: 100%;
     height: 100%;
@@ -150,12 +171,14 @@ export default {
 }
 
 .mySwiper2 {
-    height: 80%;
+    width: 100%;
+    aspect-ratio: 480 / 588;
+    height: auto;
     width: 100%;
 }
 
 .mySwiper {
-    height: 20%;
+    height: auto;
     box-sizing: border-box;
     padding: 10px 0;
 }
@@ -175,5 +198,18 @@ export default {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+@media (min-width: 1264px) {
+    .product-gallery-shell,
+    .mySwiper,
+    .mySwiper2 {
+        max-width: var(--gallery-desktop-width, 100%);
+    }
+
+    .mySwiper2 {
+        height: var(--gallery-desktop-height, auto);
+        aspect-ratio: auto;
+    }
 }
 </style>

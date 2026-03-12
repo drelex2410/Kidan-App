@@ -46,6 +46,7 @@
     <script type="module" src="/public/build/js/shop2.js"></script> --}}
     <!-- Styles & JS-->
     <!-- Styles & JS-->
+    {{-- Active storefront entrypoint: this blade loads resources/js/app.js, which mounts resources/js/components/App.vue. --}}
     @vite(['resources/js/app.js'])
     {{-- @vite(["resources/sass/app.css", "resources/js/app.js"]) --}}
     {{-- {{ Vite::useBuildDirectory('bundle')->withEntryPoints(['resources/sass/app.scss', 'resources/js/app.js']) }} --}}
@@ -147,9 +148,7 @@
 
 <body>
     <noscript>To run this application, JavaScript is required to be enabled.</noscript>
-    <div id="app">
-        <theShop></theShop>
-    </div>
+    <div id="app"></div>
 
     @if (get_setting('facebook_chat') == 1)
     <script type="text/javascript">

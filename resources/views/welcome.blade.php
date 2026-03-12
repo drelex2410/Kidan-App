@@ -1,3 +1,4 @@
+<!-- Legacy alternate blade entry. The active storefront route returns resources/views/frontend/app.blade.php. -->
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>

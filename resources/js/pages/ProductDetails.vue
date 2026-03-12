@@ -1,45 +1,54 @@
 <template>
-  <v-container class="pt-7">
-    <v-row align="start">
+  <v-container class="pt-7 single-product-page">
+    <v-row
+      align="start"
+      class="product-layout"
+    >
       <v-col
         lg="10"
         cols="12"
-        class="main-bar"
+        class="main-bar product-main-column pa-0"
       >
-        <v-row class="">
+        <v-row class="product-main-grid">
           <v-col
             cols="12"
             md="6"
             lg="5"
+            class="product-gallery-column pa-0"
           >
             <ProductGallery
               :is-loading="detailsLoading"
               :gallery-imgaes="productDetails.photos"
               :selectedVariation="selectedVariation"
+              :desktop-image-width="480"
+              :desktop-image-height="588"
             />
           </v-col>
           <v-col
             md="6"
             lg="7"
+            class="product-info-column pa-0"
           >
             <template v-if="!detailsLoading">
               <h1 class="fs-24 fw-700 mb-4 lh-1-3">{{ productDetails.name }}</h1>
 
               <div class="mb-3">
-                <span class="opacity-60 fs-14">{{ productDetails.description.replace(/<[^>]*>?/gm, '').substring(0, 100) }}</span>
+                <span class="opacity-60 fs-14">{{ shortDescription }}</span>
               </div>
 
               <div
-                v-if="productDetails.is_variant == 1"
+                v-if="isVariantProduct"
                 class="mb-4"
               >
-                <div class="mb-3">
+                <div
+                  v-if="sizeVariationOptions.length > 0"
+                  class="mb-3"
+                >
                   <div class="fw-600 fs-14 mb-2">Select Size</div>
                   <div class="d-flex gap-2">
                     <label
-                      v-for="(variation_option, i) in productDetails.variation_options"
-                      :key="i"
-                      v-if="variation_option.name.toLowerCase() === 'size'"
+                      v-for="(variation_option, i) in sizeVariationOptions"
+                      :key="variation_option.id || i"
                     >
                       <label
                         v-for="(value, j) in variation_option.values"
@@ -60,13 +69,15 @@
                   </div>
                 </div>
 
-                <div class="mb-4">
+                <div
+                  v-if="colorVariationOptions.length > 0"
+                  class="mb-4"
+                >
                   <div class="fw-600 fs-14 mb-2">Select Color</div>
                   <div class="d-flex gap-2">
                     <label
-                      v-for="(variation_option, i) in productDetails.variation_options"
-                      :key="i"
-                      v-if="variation_option.name.toLowerCase() === 'color'"
+                      v-for="(variation_option, i) in colorVariationOptions"
+                      :key="variation_option.id || i"
                     >
                       <label
                         v-for="(value, j) in variation_option.values"
@@ -104,24 +115,24 @@
 
               <div class="mb-4">
                 <v-btn
-                  v-if="Number.isInteger(cartQuantity)"
                   color="grey-darken-4 white-text"
                   elevation="0"
                   size="large"
                   block
                   class="text-uppercase fw-600"
+                  :disabled="purchaseSelectionPending"
                   @click="addCart"
                 >Add to Cart</v-btn>
               </div>
 
               <div class="mb-4">
                 <v-btn
-                  v-if="Number.isInteger(cartQuantity)"
                   variant="outlined"
                   color="grey-darken-4"
                   size="large"
                   block
                   class="text-uppercase fw-600"
+                  :disabled="purchaseSelectionPending"
                   @click="buyNow"
                 >Purchase Now</v-btn>
               </div>
@@ -129,7 +140,7 @@
               <div class="details-section">
                 <div class="details-item border-top pt-3 pb-3">
                   <div class="fw-600 fs-14 mb-2">Details</div>
-                  <div class="fs-13 opacity-70" v-html="productDetails.description"></div>
+                  <div class="fs-13 opacity-70" v-html="safeDescription"></div>
                 </div>
 
                 <div class="details-item border-top pt-3 pb-3">
@@ -228,33 +239,21 @@
       <v-col
         lg="2"
         cols="12"
-        class="sticky-top right-bar"
+        class="sticky-top right-bar product-sidebar-column pa-0"
       >
-        <v-row>
-          <v-col
-            lg="12"
-            md="3"
-            sm="4"
-            cols="12"
-          >
-            <div class="mb-4">
-              <div class="mb-3 fw-600 fs-14">Related Items</div>
-              <v-row class="row-cols-2 row-cols-md-3 row-cols-lg-1 gutters-10">
-                <v-col
-                  v-for="(product, i) in relatedProducts"
-                  :key="i"
-                  class="py-2"
-                >
-                  <product-box
-                    :product-details="product"
-                    :is-loading="relatedLoading"
-                    box-style="two"
-                  />
-                </v-col>
-              </v-row>
-            </div>
-          </v-col>
-        </v-row>
+        <div class="mb-4 single-product-related-panel">
+          <div class="mb-3 fw-600 fs-14">Related Items</div>
+          <div class="single-product-related-list">
+            <product-box
+              v-for="(product, i) in relatedProducts"
+              :key="i"
+              class="single-product-related-card"
+              :product-details="product"
+              :is-loading="relatedLoading"
+              box-style="two"
+            />
+          </div>
+        </div>
       </v-col>
     </v-row>
   </v-container>
@@ -339,6 +338,46 @@ export default {
         this.productDetails.base_discounted_price
       );
     },
+    safeDescription() {
+      return typeof this.productDetails.description === "string"
+        ? this.productDetails.description
+        : "";
+    },
+    shortDescription() {
+      return this.safeDescription.replace(/<[^>]*>?/gm, "").substring(0, 100);
+    },
+    isVariantProduct() {
+      return Number(this.productDetails.is_variant) === 1;
+    },
+    variationOptions() {
+      return Array.isArray(this.productDetails.variation_options)
+        ? this.productDetails.variation_options
+        : [];
+    },
+    sizeVariationOptions() {
+      return this.variationOptions.filter(
+        (option) => this.normalizeVariationName(option?.name) === "size"
+      );
+    },
+    colorVariationOptions() {
+      return this.variationOptions.filter(
+        (option) => this.normalizeVariationName(option?.name) === "color"
+      );
+    },
+    selectedVariationData() {
+      if (
+        this.selectedVariation &&
+        typeof this.selectedVariation === "object" &&
+        Object.keys(this.selectedVariation).length > 0
+      ) {
+        return this.selectedVariation;
+      }
+
+      return null;
+    },
+    purchaseSelectionPending() {
+      return this.isVariantProduct && !this.selectedVariationData;
+    },
   },
   watch: {
     metaTitle(newTitle) {
@@ -353,11 +392,11 @@ export default {
         if (!this.is_empty_obj(newVal)) {
           this.cartQuantity = 1;
           this.stock = newVal.stock;
-          this.current_stock = newVal.current_stock;
+          this.current_stock = newVal.current_stock ?? newVal.stock ?? 0;
           this.maxCartLimit = newVal.max_qty > 0 ? newVal.max_qty : Infinity;
           this.minCartLimit = newVal.min_qty;
           this.selectedVariation =
-            newVal.is_variant == 1 ? {} : newVal.variations[0];
+            Number(newVal.is_variant) === 1 ? {} : (newVal.variations?.[0] || {});
           this.chooseOptions = [];
         }
       },
@@ -377,7 +416,10 @@ export default {
       );
       if (res.data.success) {
         this.metaTitle = res.data.data.metaTitle;
-        this.metaDescription = res.data.data.description.replace(/<[^>]*>?/gm, '');
+        this.metaDescription =
+          typeof res.data.data.description === "string"
+            ? res.data.data.description.replace(/<[^>]*>?/gm, "")
+            : "";
         this.productDetails = res.data.data;
         this.reviewSummary = this.productDetails.review_summary;
 
@@ -437,10 +479,11 @@ export default {
         });
         return;
       }
-      if (this.productDetails.is_variant == 1) {
+      if (this.isVariantProduct) {
         let chooseOptions = this.chooseOptions.filter((el) => el != "");
         if (
-          this.productDetails.variation_options.length > chooseOptions.length
+          this.variationOptions.length > chooseOptions.length ||
+          !this.selectedVariationData
         ) {
           this.snack({
             message: this.$i18n.t("please_select_all_options"),
@@ -459,8 +502,8 @@ export default {
       }
 
       if (
-        this.selectedVariation.current_stock != null &&
-        this.selectedVariation.current_stock < this.cartQuantity
+        this.selectedVariationData?.current_stock != null &&
+        this.selectedVariationData.current_stock < this.cartQuantity
       ) {
         this.snack({
           message: this.$i18n.t("this_product_is_out_of_stock"),
@@ -469,8 +512,8 @@ export default {
         return;
       }
       if (
-        this.selectedVariation.current_stock != null &&
-        this.selectedVariation.current_stock < this.productDetails.min_qty
+        this.selectedVariationData?.current_stock != null &&
+        this.selectedVariationData.current_stock < this.productDetails.min_qty
       ) {
         this.snack({
           message: this.$i18n.t("this_product_is_out_of_stock"),
@@ -479,10 +522,12 @@ export default {
         return;
       }
 
-      let minMaxCheck = this.checkMinMaxLimit(this.selectedVariation.id);
+      let minMaxCheck = this.checkMinMaxLimit(this.selectedVariationData?.id);
       if (!minMaxCheck.success) {
         let message =
-          minMaxCheck.type == "min_limit"
+          minMaxCheck.type == "variation_required"
+            ? this.$i18n.t("please_select_all_options")
+            : minMaxCheck.type == "min_limit"
             ? `${this.$i18n.t("you_need_to_purchase_minimum_quantity")} ${
                 this.minCartLimit
               }.`
@@ -498,7 +543,7 @@ export default {
       }
 
       this.addToCart({
-        variation_id: this.selectedVariation.id,
+        variation_id: this.selectedVariationData.id,
         qty: this.cartQuantity,
       });
       this.isBuyNow = true;
@@ -514,10 +559,13 @@ export default {
         this.$router.push({ name: "Checkout" });
       }
     },
+    normalizeVariationName(name) {
+      return typeof name === "string" ? name.toLowerCase() : "";
+    },
     optionChosen() {
       let chooseOptions = this.chooseOptions.filter((el) => el != "");
       if (
-        this.productDetails.variation_options.length === chooseOptions.length
+        this.variationOptions.length === chooseOptions.length
       ) {
         let filteredVariations = this.productDetails.variations;
 
@@ -534,9 +582,15 @@ export default {
         } else {
           this.selectedVariation = {};
         }
+      } else {
+        this.selectedVariation = {};
       }
     },
     checkMinMaxLimit(variation_id) {
+      if (!variation_id) {
+        return { success: false, type: "variation_required" };
+      }
+
       if (this.isThisInCart(variation_id)) {
         if (
           this.findCartItemByVariationId(variation_id).qty + this.cartQuantity <
@@ -579,6 +633,60 @@ export default {
 </script>
 
 <style scoped>
+.single-product-page {
+  overflow-x: clip;
+}
+
+.product-layout {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+}
+
+.product-main-column,
+.product-gallery-column,
+.product-info-column,
+.product-sidebar-column {
+  min-width: 0;
+}
+
+.product-main-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.product-info-column {
+  align-self: start;
+}
+
+.product-info-column :deep(.d-flex.gap-2) {
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+
+.product-info-column label.size-option,
+.product-info-column label.color-option {
+  margin-right: 0 !important;
+}
+
+.product-info-column .mb-3,
+.product-info-column .mb-4 {
+  min-width: 0;
+}
+
+.single-product-related-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.single-product-related-panel {
+  width: 100%;
+}
+
 .size-option input[type="radio"]:checked + .size-label {
   background-color: #000;
   color: #fff;
@@ -586,6 +694,10 @@ export default {
 }
 
 .size-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
   display: inline-block;
   padding: 8px 16px;
   border: 1px solid #ddd;
@@ -607,6 +719,7 @@ export default {
 
 .color-swatch {
   display: inline-block;
+  flex: 0 0 auto;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -628,15 +741,92 @@ export default {
   border-bottom: 1px solid #eee;
 }
 
-@media (max-width: 1263px) {
-}
-@media (min-width: 1264px) {
-  .main-bar {
-    max-width: calc(100% - 224px);
+@media (max-width: 767px) {
+  .single-product-page {
+    padding-inline: 16px;
   }
+
+  .single-product-related-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1263px) {
+  .product-main-grid {
+    grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+    column-gap: 24px;
+  }
+
+  .single-product-related-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1264px) {
+  .product-layout {
+    grid-template-columns: minmax(0, 1fr) 234px;
+    column-gap: 32px;
+    align-items: start;
+  }
+
+  .product-main-grid {
+    grid-template-columns: 480px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+  }
+
+  .product-info-column {
+    padding-right: 8px;
+  }
+
+  .main-bar,
   .right-bar {
-    width: 224px;
-    max-width: 224px;
+    max-width: none;
+  }
+
+  .right-bar {
+    width: 234px;
+  }
+
+  .product-sidebar-column {
+    align-self: start;
+  }
+
+  .single-product-related-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  :deep(.single-product-related-card) {
+    width: 234px;
+    max-width: 234px;
+  }
+
+  :deep(.single-product-related-card .v-row) {
+    display: block;
+  }
+
+  :deep(.single-product-related-card .v-col) {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  :deep(.single-product-related-card .lv-product-card) {
+    width: 234px;
+    min-height: 289px;
+  }
+
+  :deep(.single-product-related-card .size-70px) {
+    width: 100%;
+    height: 180px;
+  }
+
+  :deep(.single-product-related-card .lv-product-details) {
+    padding: 14px 0 0;
+  }
+
+  :deep(.single-product-related-card .product-box-two .lv-product-details) {
+    padding: 14px 0 0;
   }
 }
 </style>

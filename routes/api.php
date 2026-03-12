@@ -71,6 +71,7 @@ Route::group(['prefix' => 'v1', 'as' => 'api.'], function () {
     // Blogs
     Route::get('all-blog-categories', [BlogController::class, 'indexCategory']);
     Route::get('all-blogs/search', [BlogController::class, 'index']);
+    Route::get('recent-blogs', [BlogController::class, 'recent']);
     Route::get('blog/details/{blog_slug}', [BlogController::class, 'show']);
 
     Route::group(['prefix' => 'product'], function () {

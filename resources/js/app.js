@@ -32,6 +32,7 @@ import HelperClass from "./utils/helpers";
 
 const shopSetting = window.shopSetting;
 
+// Active storefront root: Laravel renders frontend.app, and this file mounts App.vue into #app.
 const app = createApp(App);
 
 // Dynamic primary color from Laravel

@@ -1,5 +1,6 @@
 <template>
   <div>
+    <!-- Legacy routed homepage definition. The live homepage is composed inline in resources/js/components/App.vue. -->
     <!-- slider area -->
     <HomeSliders />
 

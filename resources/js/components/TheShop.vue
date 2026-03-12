@@ -1,6 +1,7 @@
 <template>
 
   <div>
+    <!-- Legacy shell retained for reference. The active storefront root is resources/js/components/App.vue via resources/js/app.js. -->
     <v-app class="d-flex flex-column">
       <v-locale-provider   isRTL >
       

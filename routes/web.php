@@ -120,5 +120,6 @@ Route::controller(AddressController::class)->group(function () {
     Route::get('/addresses/set_default/{id}', 'set_default')->name('addresses.set_default');
 });
 
+// Active storefront entry: routes/web.php -> HomeController@index -> frontend.app -> resources/js/app.js -> App.vue
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('{slug}', [HomeController::class, 'index'])->where('slug', '.*');

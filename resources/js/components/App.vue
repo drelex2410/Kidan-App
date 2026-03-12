@@ -6,7 +6,7 @@
         :is-home-page="isHomePage" />
 
       <v-main class="aiz-main-wrap">
-        <!-- HOME PAGE -->
+        <!-- Active homepage shell. Keep homepage composition here to avoid drifting into legacy routed shells. -->
         <div class="back custom-background" v-if="isHomePage && !$route.meta.hideLayout"
           style="position: relative !important">
           <HeroMainSlider />
@@ -29,6 +29,7 @@
           <!-- <HomeProductSectionFive />
           <HomeProductSectionSix /> -->
           <HomeBannerSectionFour />
+          <!-- Homepage stories slot: sits between testimonials and the featured editorial section below. -->
           <BlogSlider />
         </div>
 
@@ -41,7 +42,7 @@
         </div>
       </v-main>
 
-      <!-- ABOUT TEXT -->
+      <!-- Featured editorial section rendered after the homepage stories row. -->
       <HomeAboutText v-if="isHomePage && !$route.meta.hideLayout" />
 
       <!-- FOOTER -->
