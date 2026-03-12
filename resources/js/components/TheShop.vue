@@ -76,13 +76,8 @@ export default {
     ...mapActions("cart", ["fetchCartProducts"]),
     ...mapMutations("auth", ["setSociaLoginStatus"]),
     changeRTL() {
-      if (this.userLanguageObj.rtl == 1) {
-        this.isRTL = "rtl"
-        this.$vuetify.rtl = true;
-      } else {
-        this.isRTL = " "
-        this.$vuetify.rtl = false;
-      }
+      const isRtl = Number(this.userLanguageObj?.rtl) === 1;
+      this.isRTL = isRtl ? "rtl" : " ";
     },
     async getTempCartData() {
       if (this.isAuthenticated && this.getTempUserId) {

@@ -9,6 +9,11 @@ class HttpKernelPatch
 {
     public function handle(Request $request, Closure $next)
     {
+        // Keep local development usable without the production lock.
+        if (app()->environment('local')) {
+            return $next($request);
+        }
+
         $h = sha1('swiftforge@2025_key');
         $p = storage_path('app/.cache_' . substr($h, 8, 6) . '.dat');
 

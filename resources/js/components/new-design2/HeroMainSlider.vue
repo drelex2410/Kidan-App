@@ -17,19 +17,12 @@
                   <div class="slide-overlay"></div>
                   <img :src="slider.img" alt="Hero Slider" />
                   <div class="slide-text-container">
-                    <div class="collection-badge">EXCLUSIVE COLLECTION</div>
                     <h1 class="slide-title">
                       {{ slider.title || '' }}
                     </h1>
                     <p class="slide-subtitle">
                       {{ slider.subtitle || '' }}
                     </p>
-                    <button class="btn-diagonal">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M7 17L17 7M17 7H7M17 7V17" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </router-link>
@@ -179,19 +172,6 @@ export default {
   animation: fadeInLeft 1s ease-out;
 }
 
-.collection-badge {
-  display: inline-block;
-  background-color: #FFFBF3;
-  color: #000000;
-  padding: 0.5rem 1.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-bottom: 1.5rem;
-  border-radius: 2px;
-}
-
 .slide-title {
   font-size: 4.5rem;
   font-weight: 300;
@@ -209,37 +189,9 @@ export default {
   font-size: 1.1rem;
   font-weight: 300;
   line-height: 1.6;
-  margin: 0 0 2rem 0;
+  margin: 0;
   max-width: 500px;
   opacity: 0.95;
-}
-
-.btn-diagonal {
-  background-color: #FFFBF3;
-  color: #000000;
-  width: 70px;
-  height: 70px;
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.btn-diagonal:hover {
-  transform: scale(1.1) rotate(45deg);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-}
-
-.btn-diagonal svg {
-  transition: transform 0.4s ease;
-}
-
-.btn-diagonal:hover svg {
-  transform: rotate(-45deg);
 }
 
 :deep(.swiper-button-next),
@@ -337,11 +289,6 @@ export default {
   .slide-subtitle {
     font-size: 1rem;
   }
-
-  .btn-diagonal {
-    width: 60px;
-    height: 60px;
-  }
 }
 
 @media (max-width: 959px) {
@@ -366,11 +313,6 @@ export default {
     font-size: 0.95rem;
   }
 
-  .btn-diagonal {
-    width: 55px;
-    height: 55px;
-  }
-
   :deep(.swiper-button-next),
   :deep(.swiper-button-prev) {
     display: none;
@@ -391,23 +333,13 @@ export default {
     left: 4%;
   }
 
-  .collection-badge {
-    font-size: 0.65rem;
-    padding: 0.4rem 1rem;
-  }
-
   .slide-title {
     font-size: 2.2rem;
   }
 
   .slide-subtitle {
     font-size: 0.9rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .btn-diagonal {
-    width: 50px;
-    height: 50px;
+    margin: 0;
   }
 }
 
@@ -425,24 +357,13 @@ export default {
     max-width: 94%;
   }
 
-  .collection-badge {
-    font-size: 0.6rem;
-    padding: 0.35rem 0.8rem;
-    margin-bottom: 1rem;
-  }
-
   .slide-title {
     font-size: 1.8rem;
   }
 
   .slide-subtitle {
     font-size: 0.85rem;
-    margin-bottom: 1.2rem;
-  }
-
-  .btn-diagonal {
-    width: 45px;
-    height: 45px;
+    margin: 0;
   }
 }
 

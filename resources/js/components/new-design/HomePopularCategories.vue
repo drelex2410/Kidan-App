@@ -64,8 +64,8 @@
           :breakpoints="carouselOption.breakpoints"
         >
           <swiper-slide
-            v-for="(category, i) in categories"
-            :key="i"
+            v-for="category in categories"
+            :key="category.id"
             class=""
           >
             <router-link
@@ -140,7 +140,17 @@ export default {
   async created() {
     const res = await this.call_api("get", "setting/home/popular_categories");
     if (res.data.success) {
-      this.categories = res.data.data.data;
+      const rawCategories = Array.isArray(res.data?.data?.data) ? res.data.data.data : [];
+      const uniqueCategories = new Map();
+      rawCategories.forEach((category) => {
+        if (!category || !category.id || Number(category.featured) !== 1) {
+          return;
+        }
+        if (!uniqueCategories.has(category.id)) {
+          uniqueCategories.set(category.id, category);
+        }
+      });
+      this.categories = Array.from(uniqueCategories.values());
       this.loading = false;
     }
   },

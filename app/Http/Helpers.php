@@ -11,6 +11,7 @@ use App\Models\Shop;
 use App\Models\Translation;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 use function GuzzleHttp\json_decode;
 
@@ -497,17 +498,56 @@ if (!function_exists('filter_shops')) {
 if (!function_exists('filter_products')) {
     function filter_products($product_query)
     {
-
-        return $product_query->whereIn('shop_id', published_shops_ids())->where('published', 1)->where('approved', 1);
+        return $product_query->where('published', 1);
     }
 }
 if (!function_exists('published_shops_ids')) {
     function published_shops_ids()
     {
+        $cachedShopIds = Cache::get('published_shops_ids');
+        if (is_array($cachedShopIds)) {
+            $sanitizedCachedShopIds = array_values(array_unique(array_filter($cachedShopIds)));
+            if (count($sanitizedCachedShopIds) === count(array_unique($cachedShopIds))) {
+                return $sanitizedCachedShopIds;
+            }
+
+            Cache::forget('published_shops_ids');
+            Log::warning('Invalid cached published_shops_ids detected and cleared.', [
+                'cached_value' => $cachedShopIds,
+            ]);
+        }
+
         return Cache::rememberForever('published_shops_ids', function () {
             $admin = User::where('user_type', 'admin')->first();
+            $shopIds = [];
 
-            return addon_is_activated('multi_vendor') ? Shop::where('approval', 1)->where('published', 1)->where('verification_status', 1)->pluck('id')->toArray() : [$admin->shop_id];
+            if (addon_is_activated('multi_vendor')) {
+                $shopIds = Shop::where('approval', 1)->where('published', 1)->where('verification_status', 1)->pluck('id')->toArray();
+            } else {
+                if (!empty(optional($admin)->shop_id)) {
+                    $shopIds = [(int) $admin->shop_id];
+                } else {
+                    $adminOwnedShopId = $admin ? Shop::where('user_id', $admin->id)->value('id') : null;
+                    if (!empty($adminOwnedShopId)) {
+                        $shopIds = [(int) $adminOwnedShopId];
+                    }
+                }
+
+                if (empty($shopIds)) {
+                    $shopIds = Shop::where('approval', 1)->where('published', 1)->where('verification_status', 1)->pluck('id')->toArray();
+                }
+            }
+
+            $shopIds = array_values(array_unique(array_filter($shopIds)));
+            if (empty($shopIds)) {
+                Log::warning('published_shops_ids cache generated an empty result set.', [
+                    'admin_id' => optional($admin)->id,
+                    'admin_shop_id' => optional($admin)->shop_id,
+                    'multi_vendor' => addon_is_activated('multi_vendor'),
+                ]);
+            }
+
+            return $shopIds;
         });
     }
 }

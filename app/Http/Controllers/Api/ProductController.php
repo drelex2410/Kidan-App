@@ -18,12 +18,13 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Utility\CategoryUtility;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
     public function index()
     {
-        return new ProductCollection(Product::latest()->paginate(10));
+        return new ProductCollection(filter_products(Product::latest())->paginate(10));
     }
 
     public function show($product_slug)
@@ -81,7 +82,14 @@ class ProductController extends Controller
     }
     public function latest_products($limit)
     {
-        return new ProductCollection(filter_products(Product::query())->latest()->limit($limit)->get());
+        $products = filter_products(Product::query())->latest()->limit($limit)->get();
+        Log::info('Frontend latest products query snapshot', [
+            'limit' => (int) $limit,
+            'result_count' => $products->count(),
+            'latest_product_visibility' => $this->latestProductVisibilitySnapshot(),
+        ]);
+
+        return new ProductCollection($products);
     }
 
     public function search(Request $request)
@@ -179,7 +187,20 @@ class ProductController extends Controller
                 break;
         }
 
-        $collection = new ProductCollection($products->paginate(20));
+        $paginator = $products->paginate(20);
+        Log::info('Frontend product search query snapshot', [
+            'keyword' => $search_keyword,
+            'category_slug' => $request->category_slug,
+            'brand_ids' => $brand_ids,
+            'sort_by' => $sort_by,
+            'min_price' => $min_price,
+            'max_price' => $max_price,
+            'total_results' => $paginator->total(),
+            'current_page' => $paginator->currentPage(),
+            'per_page' => $paginator->perPage(),
+            'latest_product_visibility' => $this->latestProductVisibilitySnapshot(),
+        ]);
+        $collection = new ProductCollection($paginator);
 
         return response()->json([
             'success' => true,
@@ -204,7 +225,9 @@ class ProductController extends Controller
     {
 
         $keywords = array();
-        $products = Product::where('published', 1)->where('approved', 1)->where('tags', 'like', '%' . $search_keyword . '%')->get();
+        $products = filter_products(Product::query())
+            ->where('tags', 'like', '%' . $search_keyword . '%')
+            ->get();
         foreach ($products as $key => $product) {
             foreach (explode(',', $product->tags) as $key => $tag) {
                 if (stripos($tag, $search_keyword) !== false) {
@@ -219,8 +242,7 @@ class ProductController extends Controller
             }
         }
 
-        $products_query = filter_products(Product::query());
-        $products_query = $products_query->where('published', 1)->where('approved', 1)
+        $products_query = filter_products(Product::query())
             ->where(function ($q) use ($search_keyword) {
                 foreach (explode(' ', trim($search_keyword)) as $word) {
                     $q->where('name', 'like', '%' . $word . '%')
@@ -288,5 +310,39 @@ class ProductController extends Controller
             'success' => true,
             'specifications' => $products_array,
         ]);
+    }
+
+    private function latestProductVisibilitySnapshot(): array
+    {
+        $latestProduct = Product::query()
+            ->latest('id')
+            ->first(['id', 'shop_id', 'published', 'approved', 'digital', 'slug', 'deleted_at']);
+
+        if (!$latestProduct) {
+            return ['latest_product' => null];
+        }
+
+        $publishedShopIds = collect(published_shops_ids())
+            ->filter()
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->values()
+            ->all();
+        $latestProductShopId = is_null($latestProduct->shop_id) ? null : (int) $latestProduct->shop_id;
+
+        return [
+            'id' => (int) $latestProduct->id,
+            'slug' => $latestProduct->slug,
+            'shop_id' => $latestProductShopId,
+            'published' => (int) $latestProduct->published,
+            'approved' => (int) $latestProduct->approved,
+            'digital' => (int) $latestProduct->digital,
+            'soft_deleted' => !is_null($latestProduct->deleted_at),
+            'visible_on_frontend' => (int) $latestProduct->published === 1,
+            'has_default_translation' => $latestProduct->product_translations()->where('lang', env('DEFAULT_LANGUAGE'))->exists(),
+            'has_categories' => $latestProduct->product_categories()->exists(),
+            'published_shop_ids' => $publishedShopIds,
+        ];
     }
 }

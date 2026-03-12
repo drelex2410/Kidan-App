@@ -1,5 +1,5 @@
 <template>
-  <div class="popular-categories-section">
+  <div class="popular-categories-section" v-if="loading || categories.length">
     <div class="category-container">
       <div v-if="loading" class="carousel-container">
         <div class="categories-carousel">
@@ -8,38 +8,8 @@
       </div>
       <div v-else class="carousel-wrapper">
         <div ref="carousel" class="categories-carousel" :style="{ transform: `translateX(-${currentOffset}px)` }"
-          @mouseenter="pauseAutoScroll" @mouseleave="resumeAutoScroll" @transitionend="handleTransitionEnd">
-          <router-link v-for="category in categories" :key="`clone-first-${category.slug}`" class="category-card"
-            :to="{ name: 'Category', params: { categorySlug: category.slug } }">
-            <div class="category-content">
-              <div class="category-text">
-                <h3 class="category-title">{{ category.name }}</h3>
-                <p class="category-subtitle">Explore Category</p>
-              </div>
-              <div class="category-icon">
-                <i class="las la-arrow-right up-right"></i>
-              </div>
-            </div>
-            <div class="category-image-wrapper">
-              <img :src="category.banner" :alt="category.name" class="category-image">
-            </div>
-          </router-link>
-          <router-link v-for="category in categories" :key="category.slug" class="category-card"
-            :to="{ name: 'Category', params: { categorySlug: category.slug } }">
-            <div class="category-content">
-              <div class="category-text">
-                <h3 class="category-title">{{ category.name }}</h3>
-                <p class="category-subtitle">Explore Category</p>
-              </div>
-              <div class="category-icon">
-                <i class="las la-arrow-right up-right"></i>
-              </div>
-            </div>
-            <div class="category-image-wrapper">
-              <img :src="category.banner" :alt="category.name" class="category-image">
-            </div>
-          </router-link>
-          <router-link v-for="category in categories" :key="`clone-second-${category.slug}`" class="category-card"
+          @mouseenter="pauseAutoScroll" @mouseleave="resumeAutoScroll">
+          <router-link v-for="category in categories" :key="category.id" class="category-card"
             :to="{ name: 'Category', params: { categorySlug: category.slug } }">
             <div class="category-content">
               <div class="category-text">
@@ -65,29 +35,56 @@ export default {
   data: () => ({
     loading: true,
     categories: [],
-    currentOffset: 0,
+    currentIndex: 0,
     cardWidth: 300,
     gap: 20,
     cardsPerView: 4,
     autoScrollInterval: null,
     isHovered: false,
-    isTransitioning: false,
-    originalItemCount: 0
+    isTransitioning: false
   }),
+  computed: {
+    stepWidth() {
+      return this.cardWidth + this.gap;
+    },
+    maxIndex() {
+      return Math.max(this.categories.length - this.cardsPerView, 0);
+    },
+    currentOffset() {
+      return this.currentIndex * this.stepWidth;
+    }
+  },
   async created() {
     const res = await this.call_api("get", "setting/home/popular_categories");
     if (res.data.success) {
-      this.categories = res.data.data.data;
+      const rawCategories = Array.isArray(res.data?.data?.data) ? res.data.data.data : [];
+      const uniqueCategories = new Map();
+
+      rawCategories.forEach((category) => {
+        if (!category || !category.id) {
+          return;
+        }
+
+        // Defensive filter in addition to backend filtering.
+        if (Number(category.featured) !== 1) {
+          return;
+        }
+
+        if (!uniqueCategories.has(category.id)) {
+          uniqueCategories.set(category.id, category);
+        }
+      });
+
+      this.categories = Array.from(uniqueCategories.values());
       this.loading = false;
       this.$nextTick(() => {
         this.calculateDimensions();
-        this.originalItemCount = this.categories.length;
         this.startAutoScroll();
         window.addEventListener('resize', this.calculateDimensions);
       });
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopAutoScroll();
     window.removeEventListener('resize', this.calculateDimensions);
   },
@@ -110,8 +107,18 @@ export default {
         this.gap = 20;
         this.cardsPerView = 4;
       }
+
+      if (this.currentIndex > this.maxIndex) {
+        this.currentIndex = 0;
+      }
     },
     startAutoScroll() {
+      this.stopAutoScroll();
+
+      if (this.categories.length <= this.cardsPerView) {
+        return;
+      }
+
       this.autoScrollInterval = setInterval(() => {
         if (!this.isHovered && !this.isTransitioning) {
           this.scrollNext();
@@ -131,47 +138,13 @@ export default {
     },
     scrollNext() {
       if (this.isTransitioning) return;
+      if (this.maxIndex <= 0) return;
+
       this.isTransitioning = true;
-      const step = this.cardWidth + this.gap;
-      const totalOriginalWidth = (this.cardWidth + this.gap) * this.originalItemCount;
-      const currentPosition = this.currentOffset + step;
-      const maxPosition = totalOriginalWidth;
-      if (currentPosition >= maxPosition) {
-        setTimeout(() => {
-          this.currentOffset = 0;
-          this.$nextTick(() => {
-            this.isTransitioning = false;
-            setTimeout(() => {
-              if (!this.isHovered) {
-                this.currentOffset += step;
-                this.isTransitioning = true;
-                setTimeout(() => {
-                  this.isTransitioning = false;
-                }, 600);
-              }
-            }, 50);
-          });
-        }, 600);
-      } else {
-        this.currentOffset += step;
-        setTimeout(() => {
-          this.isTransitioning = false;
-        }, 600);
-      }
-    },
-    handleTransitionEnd() {
-      const totalOriginalWidth = (this.cardWidth + this.gap) * this.originalItemCount;
-      const maxPosition = totalOriginalWidth;
-      if (this.currentOffset >= maxPosition) {
-        const carousel = this.$refs.carousel;
-        carousel.style.transition = 'none';
-        this.currentOffset = 0;
-        this.$nextTick(() => {
-          setTimeout(() => {
-            carousel.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-          }, 50);
-        });
-      }
+      this.currentIndex = this.currentIndex >= this.maxIndex ? 0 : this.currentIndex + 1;
+      setTimeout(() => {
+        this.isTransitioning = false;
+      }, 600);
     },
   },
 };

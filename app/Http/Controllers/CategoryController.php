@@ -96,6 +96,8 @@ class CategoryController extends Controller
         $category_translation->name = $request->name;
         $category_translation->save();
 
+        Cache::forget('popular_categories');
+
         flash(translate('Category has been inserted successfully'))->success();
         return redirect()->route('categories.index');
     }
@@ -183,6 +185,8 @@ class CategoryController extends Controller
         $category_translation->name = $request->name;
         $category_translation->save();
 
+        Cache::forget('popular_categories');
+
         flash(translate('Category has been updated successfully'))->success();
         return back();
     }
@@ -203,6 +207,7 @@ class CategoryController extends Controller
         $category->product_categories()->delete();
 
         CategoryUtility::delete_category($id);
+        Cache::forget('popular_categories');
 
         flash(translate('Category has been deleted successfully'))->success();
         return redirect()->route('categories.index');
@@ -213,7 +218,8 @@ class CategoryController extends Controller
     public function updateFeatured(Request $request)
     {
         $category = Category::findOrFail($request->id);
-        $category->featured = $request->status;
+        $status = filter_var($request->status, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $category->featured = $status ? 1 : 0;
 
         if ($category->save()) {
             // Get the current popular categories from settings
@@ -225,7 +231,9 @@ class CategoryController extends Controller
                 $popular = [];
             }
 
-            if ($request->status) {
+            $popular = array_values(array_unique(array_map('intval', $popular)));
+
+            if ($category->featured) {
                 // Add the category ID if not already added
                 if (!in_array($category->id, $popular)) {
                     $popular[] = $category->id;

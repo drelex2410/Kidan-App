@@ -99,12 +99,12 @@ class Product extends Model
 
     public function attributes()
     {
-        return $this->hasMany(ProductAttribute::class);
+        return $this->hasMany(\App\Models\ProductAttribute::class);
     }
 
     public function attribute_values()
     {
-        return $this->hasMany(ProductAttributeValue::class);
+        return $this->hasMany(\App\Models\ProductAttributeValue::class);
     }
 
     public function variations()

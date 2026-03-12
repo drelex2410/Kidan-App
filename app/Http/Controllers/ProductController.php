@@ -13,12 +13,16 @@ use App\Models\ProductTax;
 use App\Models\ProductTranslation;
 use App\Models\ProductVariation;
 use App\Models\ProductVariationCombination;
+use App\Models\Shop;
 use App\Models\ShopBrand;
 use App\Utility\CategoryUtility;
 use Carbon\Carbon;
 use CoreComponentRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -85,18 +89,18 @@ class ProductController extends Controller
     {
 
         CoreComponentRepository::instantiateShopRepository();
+        $this->validateProductCategoryPayload($request);
+
         if ($request->has('is_variant') && !$request->has('variations')) {
             flash(translate('Invalid product variations'))->error();
             return redirect()->back();
         }
-        if (!$request->has('main_category')) {
-            flash(translate('Select a main category'))->error();
-            return redirect()->back();
-        }
+        $shop = $this->resolveShopForProduct($request);
 
         $product                    = new Product;
         $product->name              = $request->name;
-        $product->shop_id           = auth()->user()->shop_id;
+        $product->shop_id           = optional($shop)->id;
+        $this->applyProductOwnershipFields($product);
         $product->brand_id          = $request->brand_id;
         $product->unit              = $request->unit;
         $product->min_qty           = $request->min_qty;
@@ -104,14 +108,16 @@ class ProductController extends Controller
         $product->photos            = $request->photos;
         $product->thumbnail_img     = $request->thumbnail_img;
         $product->description       = $request->description;
-        $product->published         = $request->status;
+        $product->published         = (int) $request->status;
+        $product->approved          = $this->resolveApprovalStateForSave();
+        $product->digital           = 0;
         $product->main_category     = $request->main_category;
 
         // SEO meta
         $product->meta_title        = (!is_null($request->meta_title)) ? $request->meta_title : $product->name;
         $product->meta_description  = (!is_null($request->meta_description)) ? $request->meta_description : strip_tags($product->description);
         $product->meta_image          = (!is_null($request->meta_image)) ? $request->meta_image : $product->thumbnail_img;
-        $product->slug              = Str::slug($request->name, '-') . '-' . strtolower(Str::random(5));
+        $product->slug              = $this->generateUniqueProductSlug($request->name);
 
         // warranty
         $product->has_warranty      = $request->has('has_warranty') && $request->has_warranty == 'on' ? 1 : 0;
@@ -160,6 +166,19 @@ class ProductController extends Controller
         $product->width                     = $request->width;
 
         $product->save();
+        Log::info('Product created: base row saved', [
+            'product_id' => $product->id,
+            'shop_id' => $product->shop_id,
+            'published' => (int) $product->published,
+            'approved' => (int) $product->approved,
+            'digital' => (int) $product->digital,
+            'slug' => $product->slug,
+            'shop_status' => [
+                'published' => (int) optional($shop)->published,
+                'approval' => (int) optional($shop)->approval,
+                'verification_status' => (int) optional($shop)->verification_status,
+            ],
+        ]);
 
         // Product Translations
         $product_translation = ProductTranslation::firstOrNew(['lang' => env('DEFAULT_LANGUAGE'), 'product_id' => $product->id]);
@@ -167,22 +186,24 @@ class ProductController extends Controller
         $product_translation->unit = $request->unit;
         $product_translation->description = $request->description;
         $product_translation->save();
+        Log::info('Product created: translation saved', [
+            'product_id' => $product->id,
+            'lang' => env('DEFAULT_LANGUAGE'),
+            'name' => $product_translation->name,
+        ]);
 
-        // category
-        $product->categories()->sync($request->category_ids);
-
-        // shop category ids
-        $shop_category_ids = [];
-        foreach ($request->category_ids ?? [] as $id) {
-            $shop_category_ids[] = CategoryUtility::get_grand_parent_id($id);
-        }
-        $shop_category_ids =  array_merge(array_filter($shop_category_ids), $product->shop->shop_categories->pluck('category_id')->toArray());
-        $product->shop->categories()->sync($shop_category_ids);
+        $categorySyncState = $this->syncProductAndShopCategories($product, $request->input('category_ids', []), $shop);
+        Log::info('Product created: categories synced', [
+            'product_id' => $product->id,
+            'selected_category_ids' => $categorySyncState['selected_category_ids'],
+            'root_category_ids' => $categorySyncState['root_category_ids'],
+            'shop_category_ids' => $categorySyncState['shop_category_ids'],
+        ]);
 
         // shop brand
-        if ($request->brand_id) {
+        if ($request->brand_id && $shop) {
             ShopBrand::updateOrCreate([
-                'shop_id' => $product->shop_id,
+                'shop_id' => $shop->id,
                 'brand_id' => $request->brand_id,
             ]);
         }
@@ -230,13 +251,7 @@ class ProductController extends Controller
                 }
             }
         } else {
-            $variation              = new ProductVariation;
-            $variation->product_id  = $product->id;
-            $variation->sku         = $request->sku;
-            $variation->price       = $request->price;
-            $variation->stock       = $request->stock;
-            $variation->current_stock       = $request->current_stock;
-            $variation->save();
+            $this->upsertBaseVariationForSimpleProduct($product, $request);
         }
 
         // attribute
@@ -262,6 +277,7 @@ class ProductController extends Controller
 
 
         $product->save();
+        cache_clear();
 
         flash(translate('Product has been inserted successfully'))->success();
         return redirect()->route('product.index');
@@ -288,7 +304,14 @@ class ProductController extends Controller
      */
     public function edit(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
+        $product = Product::with([
+            'attributes',
+            'attribute_values',
+            'variations.combinations',
+            'variation_combinations',
+            'product_categories',
+            'brand',
+        ])->findOrFail($id);
         // if ($product->shop_id != auth()->user()->shop_id) {
         //     abort(403);
         // }
@@ -315,16 +338,20 @@ class ProductController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $this->validateProductCategoryPayload($request);
+
         if ($request->has('is_variant') && !$request->has('variations')) {
             flash(translate('Invalid product variations'))->error();
             return redirect()->back();
         }
-        if (!$request->has('main_category')) {
-            flash(translate('Select a main category'))->error();
-            return redirect()->back();
-        }
 
         $product                    = Product::findOrFail($id);
+        $shop                       = $this->resolveShopForProduct($request, $product);
+
+        if ($request->filled('shop_id') || (!$product->shop_id && $shop)) {
+            $product->shop_id = $shop->id;
+        }
+
         $oldProduct                 = clone $product;
 
         // if ($product->shop_id != auth()->user()->shop_id) {
@@ -343,7 +370,11 @@ class ProductController extends Controller
         $product->max_qty           = $request->max_qty;
         $product->photos            = $request->photos;
         $product->thumbnail_img     = $request->thumbnail_img;
-        $product->published         = $request->status;
+        $product->published         = (int) $request->status;
+        if (auth()->user()->user_type !== 'seller' && (int) $product->published === 1) {
+            $product->approved = 1;
+        }
+        $product->digital           = 0;
         $product->main_category     = $request->main_category;
 
         // Product Translations
@@ -358,7 +389,11 @@ class ProductController extends Controller
         $product->meta_title        = (!is_null($request->meta_title)) ? $request->meta_title : $product->name;
         $product->meta_description  = (!is_null($request->meta_description)) ? $request->meta_description : strip_tags($product->description);
         $product->meta_image        = (!is_null($request->meta_image)) ? $request->meta_image : $product->thumbnail_img;
-        $product->slug              = (!is_null($request->slug)) ? Str::slug($request->slug, '-') : Str::slug($request->name, '-') . '-' . strtolower(Str::random(5));
+        if (!is_null($request->slug)) {
+            $product->slug = $this->generateUniqueProductSlug($request->slug, $product->id);
+        } elseif (empty($product->slug)) {
+            $product->slug = $this->generateUniqueProductSlug($request->name, $product->id);
+        }
 
         // warranty
         $product->has_warranty      = $request->has('has_warranty') && $request->has_warranty == 'on' ? 1 : 0;
@@ -409,21 +444,18 @@ class ProductController extends Controller
         $product->length                    = $request->length;
         $product->width                     = $request->width;
 
-        // category
-        $product->categories()->sync($request->category_ids);
-
-        // shop category ids
-        $shop_category_ids = [];
-        foreach ($request->category_ids ?? [] as $id) {
-            $shop_category_ids[] = CategoryUtility::get_grand_parent_id($id);
-        }
-        $shop_category_ids =  array_merge(array_filter($shop_category_ids), $product->shop->shop_categories->pluck('category_id')->toArray());
-        $product->shop->categories()->sync($shop_category_ids);
+        $categorySyncState = $this->syncProductAndShopCategories($product, $request->input('category_ids', []), $shop);
+        Log::info('Product updated: categories synced', [
+            'product_id' => $product->id,
+            'selected_category_ids' => $categorySyncState['selected_category_ids'],
+            'root_category_ids' => $categorySyncState['root_category_ids'],
+            'shop_category_ids' => $categorySyncState['shop_category_ids'],
+        ]);
 
         // shop brand
-        if ($request->brand_id) {
+        if ($request->brand_id && $shop) {
             ShopBrand::updateOrCreate([
-                'shop_id' => $product->shop_id,
+                'shop_id' => $shop->id,
                 'brand_id' => $request->brand_id,
             ]);
         }
@@ -498,24 +530,16 @@ class ProductController extends Controller
                 }
             }
         } else {
-            // check if old product is variant then delete all old variation & combinations
+            // If product switches from variant to non-variant, clear old variant combinations first.
             if ($oldProduct->is_variant) {
-                foreach ($product->variations as $variation) {
-                    foreach ($variation->combinations as $comb) {
-                        $comb->delete();
-                    }
-                    $variation->delete();
+                $existingVariationIds = $product->variations()->pluck('id');
+                if ($existingVariationIds->isNotEmpty()) {
+                    ProductVariationCombination::whereIn('product_variation_id', $existingVariationIds)->delete();
                 }
+                $product->variations()->delete();
             }
 
-            $variation              = $product->variations->first();
-            $variation->product_id  = $product->id;
-            $variation->code        = null;
-            $variation->sku         = $request->sku;
-            $variation->price       = $request->price;
-            $variation->stock       = $request->stock;
-            $variation->current_stock       = $request->current_stock;
-            $variation->save();
+            $this->upsertBaseVariationForSimpleProduct($product, $request);
         }
 
 
@@ -548,6 +572,15 @@ class ProductController extends Controller
 
 
         $product->save();
+        cache_clear();
+        Log::info('Product updated: base row saved', [
+            'product_id' => $product->id,
+            'shop_id' => $product->shop_id,
+            'published' => (int) $product->published,
+            'approved' => (int) $product->approved,
+            'digital' => (int) $product->digital,
+            'slug' => $product->slug,
+        ]);
 
         flash(translate('Product has been updated successfully'))->success();
         return redirect()->route('product.index');
@@ -675,7 +708,9 @@ class ProductController extends Controller
 
     public function get_products_by_subcategory(Request $request)
     {
-        $products = Product::where('subcategory_id', $request->subcategory_id)->get();
+        $products = Product::whereHas('product_categories', function ($query) use ($request) {
+            $query->where('category_id', $request->subcategory_id);
+        })->get();
         return $products;
     }
 
@@ -688,10 +723,18 @@ class ProductController extends Controller
     public function updatePublished(Request $request)
     {
         $product = Product::findOrFail($request->id);
-        $product->published = $request->status;
+        $product->published = (int) $request->status;
+        if (auth()->user()->user_type !== 'seller' && (int) $request->status === 1) {
+            $product->approved = 1;
+        }
         $product->save();
 
         cache_clear();
+        Log::info('Product publish status updated', [
+            'product_id' => $product->id,
+            'published' => (int) $product->published,
+            'approved' => (int) $product->approved,
+        ]);
 
         return 1;
     }
@@ -840,5 +883,176 @@ class ProductController extends Controller
         }
 
         return 1;
+    }
+
+    private function validateProductCategoryPayload(Request $request): void
+    {
+        $request->validate(
+            [
+                'main_category' => ['required', 'integer', 'exists:categories,id'],
+                'category_ids' => ['required', 'array', 'min:1'],
+                'category_ids.*' => ['required', 'integer', 'distinct', 'exists:categories,id'],
+                'shop_id' => ['nullable', 'integer', 'exists:shops,id'],
+            ],
+            [
+                'main_category.required' => translate('Select a main category'),
+                'category_ids.required' => translate('Select at least one category'),
+                'category_ids.min' => translate('Select at least one category'),
+            ]
+        );
+
+        $selectedCategoryIds = collect($request->input('category_ids', []))
+            ->filter()
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->unique()
+            ->values();
+
+        if (!$selectedCategoryIds->contains((int) $request->input('main_category'))) {
+            throw ValidationException::withMessages([
+                'main_category' => translate('Main category must be one of the selected categories.'),
+            ]);
+        }
+
+        $request->merge([
+            'category_ids' => $selectedCategoryIds->all(),
+        ]);
+    }
+
+    private function resolveShopForProduct(Request $request, ?Product $product = null): ?Shop
+    {
+        $shopId = $request->input('shop_id');
+
+        if (!$shopId) {
+            $shopId = auth()->user()->shop_id ?: optional($product)->shop_id;
+        }
+
+        if (!$shopId) {
+            return null;
+        }
+
+        $shop = Shop::find($shopId);
+
+        if (!$shop) {
+            return null;
+        }
+
+        return $shop;
+    }
+
+    private function syncProductAndShopCategories(Product $product, array $categoryIds, ?Shop $shop): array
+    {
+        $selectedCategoryIds = collect($categoryIds)
+            ->filter()
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->unique()
+            ->values()
+            ->all();
+
+        $product->categories()->sync($selectedCategoryIds);
+
+        $rootCategoryIds = collect($selectedCategoryIds)
+            ->map(function ($id) {
+                return CategoryUtility::get_grand_parent_id($id);
+            })
+            ->filter()
+            ->map(function ($id) {
+                return (int) $id;
+            });
+
+        $shopCategoryIds = [];
+
+        if ($shop) {
+            $existingShopCategoryIds = $shop->shop_categories()
+                ->pluck('category_id')
+                ->map(function ($id) {
+                    return (int) $id;
+                });
+
+            $shopCategoryIds = $rootCategoryIds
+                ->merge($existingShopCategoryIds)
+                ->unique()
+                ->values()
+                ->all();
+
+            $shop->categories()->sync($shopCategoryIds);
+        }
+
+        return [
+            'selected_category_ids' => $selectedCategoryIds,
+            'root_category_ids' => $rootCategoryIds->values()->all(),
+            'shop_category_ids' => $shopCategoryIds,
+        ];
+    }
+
+    private function upsertBaseVariationForSimpleProduct(Product $product, Request $request): void
+    {
+        $variation = $product->variations()->whereNull('code')->first();
+
+        if (!$variation) {
+            $variation = new ProductVariation;
+            $variation->product_id = $product->id;
+        }
+
+        $variation->code = null;
+        $variation->sku = $request->input('sku');
+        $variation->price = (float) $request->input('price', 0);
+        $variation->stock = (int) $request->input('stock', 1);
+        $variation->current_stock = (int) $request->input('current_stock', 0);
+        $variation->save();
+
+        $extraVariationIds = $product->variations()
+            ->where('id', '!=', $variation->id)
+            ->pluck('id');
+
+        if ($extraVariationIds->isNotEmpty()) {
+            ProductVariationCombination::whereIn('product_variation_id', $extraVariationIds)->delete();
+            ProductVariation::whereIn('id', $extraVariationIds)->delete();
+        }
+    }
+
+    private function resolveApprovalStateForSave(): int
+    {
+        return auth()->user()->user_type === 'seller' ? 0 : 1;
+    }
+
+    private function applyProductOwnershipFields(Product $product): void
+    {
+        $user = auth()->user();
+
+        if (Schema::hasColumn('products', 'user_id')) {
+            $product->user_id = $user->id;
+        }
+
+        if (Schema::hasColumn('products', 'added_by')) {
+            $product->added_by = $user->user_type === 'seller' ? 'seller' : 'admin';
+        }
+    }
+
+    private function generateUniqueProductSlug(string $slugSource, ?int $exceptProductId = null): string
+    {
+        $baseSlug = Str::slug($slugSource, '-');
+        $baseSlug = $baseSlug !== '' ? $baseSlug : 'product';
+        $slug = $baseSlug;
+
+        $alreadyExists = Product::where('slug', $slug)
+            ->when($exceptProductId, function ($query) use ($exceptProductId) {
+                $query->where('id', '!=', $exceptProductId);
+            })
+            ->exists();
+
+        while ($alreadyExists) {
+            $slug = $baseSlug . '-' . strtolower(Str::random(5));
+            $alreadyExists = Product::where('slug', $slug)
+                ->when($exceptProductId, function ($query) use ($exceptProductId) {
+                    $query->where('id', '!=', $exceptProductId);
+                })
+                ->exists();
+        }
+
+        return $slug;
     }
 }

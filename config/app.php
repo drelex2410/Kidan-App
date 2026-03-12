@@ -78,9 +78,12 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'asset_url' => env('APP_URL', 'http://localhost')."/public",
-    // 'asset_url' => "/public",
-    // 'asset_url' => env('ASSET_URL'),
+    'asset_url' => env(
+        'ASSET_URL',
+        env('APP_ENV') === 'local'
+            ? env('APP_URL', 'http://localhost')
+            : env('APP_URL', 'http://localhost') . '/public'
+    ),
 
     /*
     |--------------------------------------------------------------------------

@@ -40,9 +40,14 @@ class SettingController extends Controller
 
             case 'popular_categories':
                 $data = Cache::remember('popular_categories', 86400, function () {
-                    return get_setting('home_popular_categories')
-                        ? new CategoryCollection(Category::whereIn('id', json_decode(get_setting('home_popular_categories')))->get())
-                        : [];
+                    // Homepage popular categories must always follow the admin "featured" toggle.
+                    return new CategoryCollection(
+                        Category::query()
+                            ->where('featured', 1)
+                            ->orderBy('order_level', 'desc')
+                            ->orderBy('id', 'desc')
+                            ->get()
+                    );
                 });
                 break;
 

@@ -131,10 +131,10 @@
                     <div class="card-body">
                         @php
                             $first_variation = $product->variations->first();
-                            $price = !$product->is_variant ? $first_variation->price : 0;
-                            $sku = !$product->is_variant ? $first_variation->sku : null;
-                            $stock = !$product->is_variant ? $first_variation->stock : 1;
-                            $current_stock = !$product->is_variant ? $first_variation->current_stock : 0;
+                            $price = !$product->is_variant ? (optional($first_variation)->price ?? $product->lowest_price ?? 0) : 0;
+                            $sku = !$product->is_variant ? (optional($first_variation)->sku ?? null) : null;
+                            $stock = !$product->is_variant ? (optional($first_variation)->stock ?? $product->stock ?? 1) : 1;
+                            $current_stock = !$product->is_variant ? (optional($first_variation)->current_stock ?? 0) : 0;
                         @endphp
 
                         <div class="no_product_variant" @if ($product->is_variant) style="display:none;" @endif>

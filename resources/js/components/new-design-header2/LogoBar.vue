@@ -1,7 +1,7 @@
 <template>
-  <div class="logobar" :class="{ scrolled: isScrolled, 'home-page': isHomePage }" 
-       @mouseenter="showCategories = true" 
-       @mouseleave="startHideTimer">
+  <div class="logobar" :class="{ scrolled: isScrolled, 'home-page': isHomePage, 'header-active': isHeaderActive }"
+       @mouseenter="handleHeaderMouseEnter"
+       @mouseleave="handleHeaderMouseLeave">
     <div class="top-bar">
       <div class="top-bar-container d-flex align-center justify-space-between">
         <div class="left-section d-flex align-center">
@@ -102,7 +102,6 @@
 import { mapActions, mapGetters } from "vuex";
 import Sidebar from "./Sidebar.vue";
 import CategoryBar from "./CategoryBar.vue";
-import { onDeactivated } from "vue";
 
 export default {
   components: {
@@ -120,6 +119,7 @@ export default {
     categories: [],
     showAccountMenu: false,
     isScrolled: false,
+    isHovered: false,
     showCategories: false, // NEW: Controls category bar visibility
     lastScrollPosition: 0,
     scrollTimeout: null,
@@ -129,6 +129,9 @@ export default {
     ...mapGetters("app", ["appLogo", "appName"]),
     ...mapGetters("auth", ["isAuthenticated", "currentUser"]),
     ...mapGetters("cart", ["getCartCount", "getCartPrice", "getTotalCouponDiscount"]),
+    isHeaderActive() {
+      return this.isHovered || this.isScrolled;
+    },
     cartDrawerOpen: {
       get() {
         return this.$store.state.auth.cartDrawerOpen || false;
@@ -192,6 +195,15 @@ export default {
       this.toggleAccountMenu();
       this.$router.push({ name: "Home" }).catch(() => { });
     },
+    handleHeaderMouseEnter() {
+      this.isHovered = true;
+      this.clearHideTimer();
+      this.showCategories = true;
+    },
+    handleHeaderMouseLeave() {
+      this.isHovered = false;
+      this.startHideTimer();
+    },
     toggleSidebar() {
       this.showSidebar = !this.showSidebar;
       if (this.showSidebar) {
@@ -247,11 +259,21 @@ export default {
   margin-left: calc(-50vw + 50%) !important;
   left: 0 !important;
   right: 0 !important;
+  --header-fg: #fff;
+  --header-transition: 240ms ease;
+  --header-logo-filter: brightness(0) saturate(100%) invert(1);
   background-color: transparent;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   z-index: 1000;
   box-sizing: border-box;
+  color: var(--header-fg);
+}
+
+.logobar.header-active,
+.logobar.scrolled {
+  --header-fg: #1a1a1a;
+  --header-logo-filter: brightness(0) saturate(100%);
 }
 
 .logobar:not(.home-page) {
@@ -293,14 +315,14 @@ export default {
 .menu-btn {
   background: none;
   border: none;
-  color: #1a1a1a;
+  color: var(--header-fg);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0;
   font-size: 1.125rem;
-  transition: all 0.3s ease;
+  transition: color var(--header-transition), opacity 0.3s ease;
 }
 
 .menu-btn i {
@@ -314,9 +336,9 @@ export default {
 
 .track-order-link {
   font-size: 0.875rem;
-  color: #1a1a1a;
+  color: var(--header-fg);
   cursor: pointer;
-  transition: opacity 0.3s ease;
+  transition: color var(--header-transition), opacity 0.3s ease;
 }
 
 .track-order-link:hover {
@@ -332,20 +354,21 @@ export default {
 
 .logo-img {
   height: 40px;
-  transition: height 0.3s ease;
+  filter: var(--header-logo-filter);
+  transition: height 0.3s ease, filter var(--header-transition);
 }
 
 .icon-btn {
   background: none;
   border: none;
-  color: #1a1a1a;
+  color: var(--header-fg);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   font-size: 1.5rem;
-  transition: all 0.3s ease;
+  transition: color var(--header-transition), opacity 0.3s ease;
   text-decoration: none;
 }
 

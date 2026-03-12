@@ -4,7 +4,7 @@
         $value .= '-';
     }
 @endphp
-<li id="{{ $childCategory->id }}">{{ $value }}{{ $childCategory->name }}</li>
+<li id="{{ $child_category->id }}">{{ $value }}{{ $child_category->name }}</li>
 @if ($child_category->childrenCategories)
     @foreach ($child_category->childrenCategories as $childCategory)
         @include('backend.product.products.child_category', ['child_category' => $childCategory])

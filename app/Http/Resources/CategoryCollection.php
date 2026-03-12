@@ -16,6 +16,7 @@ class CategoryCollection extends ResourceCollection
                     'banner' => api_asset($data->banner),
                     'icon' => api_asset($data->icon),
                     'slug' => $data->slug,
+                    'featured' => (int) $data->featured,
                 ];
             })
         ];

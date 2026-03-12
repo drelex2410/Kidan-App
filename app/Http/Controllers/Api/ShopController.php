@@ -112,16 +112,9 @@ class ShopController extends Controller
 
     public function show($slug, Request $request)
     {
-        $shop = filter_shops(Shop::where('slug', $slug)->with(['categories'])->withCount(['reviews']))->first();
+        $shop = Shop::where('slug', $slug)->with(['categories'])->withCount(['reviews'])->first();
 
         if ($shop) {
-            if ($shop->verification_status == 0) {
-                return response()->json([
-                    'success' => false,
-                    'data' => null,
-                    'message' => translate('Shop not verified')
-                ]);
-            }
             return response()->json([
                 'success' => true,
                 'data' => new ShopResource($shop),
@@ -138,13 +131,13 @@ class ShopController extends Controller
 
     public function shop_home($slug, Request $request)
     {
-        $shop = filter_shops(Shop::where('slug', $slug)->with([])->withCount(['reviews']))->first();
+        $shop = Shop::where('slug', $slug)->with([])->withCount(['reviews'])->first();
 
         if ($shop) {
-            $featured_products =  Product::whereIn('id', json_decode($shop->featured_products ?? '[]'))->where('published', 1)->where('approved', 1)->get();
-            $new_arrival_products =  Product::where('shop_id', $shop->id)->where('published', 1)->where('approved', 1)->latest()->limit(10)->get();
-            $best_rated_products =  Product::where('shop_id', $shop->id)->where('published', 1)->where('approved', 1)->orderBy('rating', 'desc')->limit(10)->get();
-            $best_selling_products =  Product::where('shop_id', $shop->id)->where('published', 1)->where('approved', 1)->orderBy('num_of_sale', 'desc')->limit(10)->get();
+            $featured_products =  Product::whereIn('id', json_decode($shop->featured_products ?? '[]'))->where('published', 1)->get();
+            $new_arrival_products =  Product::where('shop_id', $shop->id)->where('published', 1)->latest()->limit(10)->get();
+            $best_rated_products =  Product::where('shop_id', $shop->id)->where('published', 1)->orderBy('rating', 'desc')->limit(10)->get();
+            $best_selling_products =  Product::where('shop_id', $shop->id)->where('published', 1)->orderBy('num_of_sale', 'desc')->limit(10)->get();
             $latest_coupons = Coupon::where('shop_id', $shop->id)->where('start_date', '<=', strtotime(date('d-m-Y H:i:s')))->where('end_date', '>=', strtotime(date('d-m-Y H:i:s')))->limit(5)->get();
 
             return response()->json([
@@ -173,7 +166,7 @@ class ShopController extends Controller
 
     public function shop_coupons($slug, Request $request)
     {
-        $shop = filter_shops(Shop::where('slug', $slug)->with([])->withCount(['reviews']))->first();
+        $shop = Shop::where('slug', $slug)->with([])->withCount(['reviews'])->first();
 
         if ($shop) {
             return response()->json([
@@ -194,7 +187,7 @@ class ShopController extends Controller
 
     public function shop_products($slug, Request $request)
     {
-        $shop = filter_shops(Shop::where('slug', $slug))->first();
+        $shop = Shop::where('slug', $slug)->first();
         if (!$shop) {
             return response()->json([
                 'success' => false,

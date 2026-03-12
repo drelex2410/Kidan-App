@@ -51,10 +51,10 @@
                         <option value="num_of_sale,asc" @isset($col_name, $query) @if ($col_name == 'num_of_sale' && $query == 'asc') selected @endif @endisset>
                             {{ translate('Num of Sale (Low > High)') }}
                         </option>
-                        <option value="unit_price,desc" @isset($col_name, $query) @if ($col_name == 'unit_price' && $query == 'desc') selected @endif @endisset>
+                        <option value="lowest_price,desc" @isset($col_name, $query) @if ($col_name == 'lowest_price' && $query == 'desc') selected @endif @endisset>
                             {{ translate('Base Price (High > Low)') }}
                         </option>
-                        <option value="unit_price,asc" @isset($col_name, $query) @if ($col_name == 'unit_price' && $query == 'asc') selected @endif @endisset>
+                        <option value="lowest_price,asc" @isset($col_name, $query) @if ($col_name == 'lowest_price' && $query == 'asc') selected @endif @endisset>
                             {{ translate('Base Price (Low > High)') }}
                         </option>
                     </select>
