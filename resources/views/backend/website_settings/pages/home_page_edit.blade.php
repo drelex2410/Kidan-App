@@ -945,20 +945,24 @@
 	<!-- Product section 4 -->
 	<div class="card border-bottom">
 		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseProductSectionFour" aria-expanded="true" aria-controls="collapseProductSectionFour">
-			<h6 class="my-2">{{ translate('Product section 4') }}</h6>
+			<h6 class="my-2">{{ translate('Best Selling Section') }}</h6>
 			<i class="las la-angle-down opacity-60 fs-20"></i>
 		</div>
 		<div id="collapseProductSectionFour" class="collapse" data-parent="#accordionExample">
 			<div class="card-body">
 				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
 					@csrf
+					<div class="alert alert-info">
+						{{ translate('This homepage section now fills automatically from the top 5 products with real purchase activity. Cart activity is used as a tie-breaker when sales counts are equal.') }}
+					</div>
 					<div class="form-group row">
-						<label class="col-md-3 col-from-label">{{translate('Section title')}}</label>
+						<label class="col-md-3 col-from-label">{{translate('Homepage title')}}</label>
 						<div class="col-md-9">
 							<input type="hidden" name="types[]" value="home_product_section_4_title">
 							<input type="text" placeholder="" name="home_product_section_4_title" value="{{ get_setting('home_product_section_4_title') }}" class="form-control">
 						</div>
 					</div>
+					{{--
 					<div class="form-group row">
 						<label class="col-md-3 col-from-label">{{translate('Select product')}}</label>
 						<div class="col-md-9">
@@ -970,6 +974,7 @@
 							</select>
 						</div>
 					</div>
+					--}}
 					<div class="text-right">
 						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
 					</div>
@@ -1215,6 +1220,20 @@
 						<textarea class="aiz-text-editor form-control" name="home_about_us" placeholder="Type.." data-min-height="350">
 							{!! get_setting('home_about_us') !!}
 						</textarea>
+					</div>
+					<div class="form-group">
+						<label>{{ translate('Homepage right media YouTube link') }}</label>
+						<input type="hidden" name="types[]" value="home_about_youtube_url">
+						<input
+							type="text"
+							class="form-control"
+							name="home_about_youtube_url"
+							value="{{ get_setting('home_about_youtube_url') }}"
+							placeholder="https://www.youtube.com/watch?v=..."
+						>
+						<small class="form-text text-muted">
+							{{ translate('Paste a YouTube watch, share, shorts, or embed link. When this is filled, the homepage right-hand media frame will show this video. Leave it empty to keep the current automatic story image fallback.') }}
+						</small>
 					</div>
 					<div class="text-right">
 						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>

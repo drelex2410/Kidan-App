@@ -96,15 +96,24 @@ class SettingController extends Controller
                 break;
 
             case 'product_section_four':
-                $data = Cache::remember('product_section_four', 86400, function () {
-                    $product_section_4_products = get_setting('home_product_section_4_products')
-                        ? filter_products(Product::whereIn('id', json_decode(get_setting('home_product_section_4_products'))))->get()
-                        : [];
-                    return [
-                        'title' => get_setting('home_product_section_4_title'),
-                        'products' => new ProductCollection($product_section_4_products)
-                    ];
-                });
+                $product_section_4_products = Product::query()
+                    ->with(['variations'])
+                    ->withCount('carts')
+                    ->frontendVisible()
+                    ->where(function ($query) {
+                        $query->where('num_of_sale', '>', 0)
+                            ->orWhereHas('carts');
+                    })
+                    ->orderByDesc('num_of_sale')
+                    ->orderByDesc('carts_count')
+                    ->orderByDesc('updated_at')
+                    ->limit(5)
+                    ->get();
+
+                $data = [
+                    'title' => get_setting('home_product_section_4_title') ?: 'Best Selling',
+                    'products' => new ProductCollection($product_section_4_products)
+                ];
                 break;
 
             case 'product_section_five':
@@ -160,7 +169,10 @@ class SettingController extends Controller
                 break;
 
             case 'home_about_text':
-                $data = get_setting('home_about_us');
+                $data = [
+                    'content' => get_setting('home_about_us'),
+                    'youtube_url' => get_setting('home_about_youtube_url'),
+                ];
                 break;
 
             case 'shop_section_one':

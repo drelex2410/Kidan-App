@@ -9,29 +9,44 @@
         </div>
         
         <div v-if="!loading" class="content-wrapper">
-          <div class="text-content" v-html="data"></div>
+          <div class="text-content" v-html="contentHtml"></div>
           
           <div class="media-container">
             <div class="media-wrapper" v-if="mediaUrl">
               <!-- Video -->
-              <div v-if="mediaType === 'video'" class="video-container">
+              <div v-if="mediaType === 'video' && videoId" class="video-container">
+                <button
+                  v-if="!isVideoPlaying"
+                  type="button"
+                  class="video-preview"
+                  @click="startVideoPlayback"
+                  :aria-label="`Play ${videoTitle}`"
+                >
+                  <img
+                    :src="videoPosterUrl"
+                    alt=""
+                    class="video-poster"
+                  >
+                  <div class="play-overlay">
+                    <div class="play-button">
+                      <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                        <circle cx="40" cy="40" r="40" fill="#FF0000" opacity="0.95"/>
+                        <path d="M32 24L56 40L32 56V24Z" fill="white"/>
+                      </svg>
+                    </div>
+                  </div>
+                </button>
                 <iframe
+                  v-else
                   width="100%"
                   height="100%"
-                  :src="getEmbedUrl(mediaUrl)"
-                  title="Fashion Trends Video"
+                  :src="activeEmbedUrl"
+                  :title="videoTitle"
                   frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerpolicy="strict-origin-when-cross-origin"
                   allowfullscreen
                 ></iframe>
-                <div class="play-overlay">
-                  <div class="play-button">
-                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                      <circle cx="40" cy="40" r="40" fill="#FF0000" opacity="0.95"/>
-                      <path d="M32 24L56 40L32 56V24Z" fill="white"/>
-                    </svg>
-                  </div>
-                </div>
               </div>
               
               <!-- Image -->
@@ -54,22 +69,25 @@
 export default {
   data: () => ({
     loading: true,
-    data: null,
+    contentHtml: "",
+    configuredYoutubeUrl: null,
     mediaUrl: null,
-    mediaType: 'image', // 'image' or 'video'
+    mediaType: 'image',
+    isVideoPlaying: false,
   }),
   async created() {
     try {
-      // Fetch home about text
       const homeRes = await this.call_api("get", "setting/home/home_about_text");
       if (homeRes.data.success) {
-        this.data = homeRes.data.data;
+        this.applyHomeAboutPayload(homeRes.data.data);
       }
-      // Fetch latest published homepage story for media
-      const firstBlog = await this.fetchHomepageLeadStory();
-      if (firstBlog) {
-        this.mediaUrl = firstBlog.banner;
-        this.mediaType = firstBlog.type || 'image';
+
+      if (!this.mediaUrl) {
+        const firstBlog = await this.fetchHomepageLeadStory();
+        if (firstBlog) {
+          this.mediaUrl = firstBlog.banner;
+          this.mediaType = 'image';
+        }
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -78,6 +96,22 @@ export default {
     }
   },
   methods: {
+    applyHomeAboutPayload(payload) {
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        this.contentHtml = payload.content || "";
+
+        if (this.isYoutubeUrl(payload.youtube_url)) {
+          this.configuredYoutubeUrl = payload.youtube_url;
+          this.mediaUrl = payload.youtube_url;
+          this.mediaType = "video";
+          this.isVideoPlaying = false;
+        }
+
+        return;
+      }
+
+      this.contentHtml = payload || "";
+    },
     async fetchHomepageLeadStory() {
       const requests = [
         "recent-blogs?limit=1",
@@ -115,18 +149,70 @@ export default {
 
       return [];
     },
+    isYoutubeUrl(url) {
+      return !!this.extractYouTubeId(url);
+    },
+    startVideoPlayback() {
+      this.isVideoPlaying = true;
+    },
     getEmbedUrl(url) {
-      // Convert YouTube URL to embed format
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        const videoId = this.extractYouTubeId(url);
-        return `https://www.youtube.com/embed/${videoId}`;
+      const videoId = this.extractYouTubeId(url);
+      if (videoId) {
+        return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3`;
       }
-      return url;
+      return null;
     },
     extractYouTubeId(url) {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-      const match = url.match(regExp);
-      return (match && match[2].length === 11) ? match[2] : null;
+      if (typeof url !== "string" || url.trim() === "") {
+        return null;
+      }
+
+      try {
+        const parsedUrl = new URL(url);
+        const hostname = parsedUrl.hostname.replace(/^www\./, "");
+
+        if (hostname === "youtu.be") {
+          const candidate = parsedUrl.pathname.split("/").filter(Boolean)[0];
+          return candidate && candidate.length === 11 ? candidate : null;
+        }
+
+        if (hostname === "youtube.com" || hostname === "m.youtube.com" || hostname === "youtube-nocookie.com") {
+          if (parsedUrl.searchParams.get("v")) {
+            const candidate = parsedUrl.searchParams.get("v");
+            return candidate && candidate.length === 11 ? candidate : null;
+          }
+
+          const segments = parsedUrl.pathname.split("/").filter(Boolean);
+          const embedIndex = segments.findIndex((segment) => ["embed", "shorts", "live", "v"].includes(segment));
+
+          if (embedIndex !== -1 && segments[embedIndex + 1]) {
+            const candidate = segments[embedIndex + 1];
+            return candidate.length === 11 ? candidate : null;
+          }
+        }
+      } catch (error) {
+        return null;
+      }
+
+      return null;
+    }
+  },
+  computed: {
+    videoId() {
+      return this.mediaType === "video" ? this.extractYouTubeId(this.mediaUrl) : null;
+    },
+    activeEmbedUrl() {
+      return this.mediaType === "video" && this.isVideoPlaying
+        ? this.getEmbedUrl(this.mediaUrl)
+        : null;
+    },
+    videoPosterUrl() {
+      return this.videoId
+        ? `https://i.ytimg.com/vi/${this.videoId}/maxresdefault.jpg`
+        : "";
+    },
+    videoTitle() {
+      return "Fashion Trends Video";
     }
   }
 };
@@ -189,8 +275,8 @@ export default {
   justify-content: space-between;
   padding: 100px 80px;
   min-height: 650px;
-  gap: 80px;
-  max-width: 1400px;
+  gap: 72px;
+  max-width: 1480px;
   margin: 0 auto;
 }
 
@@ -262,7 +348,7 @@ export default {
 
 .media-container {
   flex: 1;
-  max-width: 580px;
+  max-width: 700px;
   position: relative;
 }
 
@@ -280,6 +366,27 @@ export default {
   width: 100%;
   padding-bottom: 56.25%;
   background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+}
+
+.video-preview {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.video-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 24px;
 }
 
 .video-container iframe {
@@ -300,7 +407,6 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
   z-index: 10;
 }
 
@@ -366,7 +472,7 @@ export default {
   }
   
   .media-container {
-    max-width: 100%;
+    max-width: min(100%, 760px);
   }
   
   .shape-red {
