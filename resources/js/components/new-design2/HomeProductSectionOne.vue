@@ -11,12 +11,14 @@
                 Explore our best selling catalogue, Join<br />
                 hundreds of people with exquisite taste.
               </p>
-              <button class="discover-btn">DISCOVER MORE</button>
+              <dynamic-link to="/todays-deal" append-class="discover-btn-wrapper">
+                <button class="discover-btn">DISCOVER MORE</button>
+              </dynamic-link>
             </div>
           </div>
 
           <div class="products-slider-container">
-            <button class="slider-arrow slider-arrow-left" @click="slideLeft">
+            <button v-if="products.length > visibleCount" class="slider-arrow slider-arrow-left" @click="slideLeft">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -30,7 +32,7 @@
               </div>
             </div>
 
-            <div v-else class="products-slider" ref="slider">
+            <div v-else-if="products.length > 0" class="products-slider" ref="slider">
               <div class="slider-wrapper">
                 <transition-group name="slide-fade" tag="div" class="slider-transition-wrapper">
                   <product-box 
@@ -43,8 +45,11 @@
                 </transition-group>
               </div>
             </div>
+            <div v-else class="empty-state">
+              No Today&apos;s Deal products are available right now.
+            </div>
 
-            <button class="slider-arrow slider-arrow-right" @click="slideRight">
+            <button v-if="products.length > visibleCount" class="slider-arrow slider-arrow-right" @click="slideRight">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -178,6 +183,11 @@ export default {
   width: 100%;
 }
 
+.discover-btn-wrapper {
+  display: block;
+  text-decoration: none;
+}
+
 .discover-btn:hover {
   background: #a00000;
 }
@@ -196,6 +206,21 @@ export default {
       padding: 0 5%;
   overflow: hidden;
   min-width: 0; /* Important for flex child to respect overflow */
+}
+
+.empty-state {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  color: #6b6b6b;
+  font-size: 1rem;
+  border: 1px solid #e7dfd1;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .slider-wrapper {

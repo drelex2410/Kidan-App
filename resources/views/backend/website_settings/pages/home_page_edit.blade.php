@@ -3,31 +3,43 @@
 @php
 	$all_products = filter_products(\App\Models\Product::where('published',1)->where('approved', 1))->get();
 	$all_shops = filter_shops(\App\Models\Shop::query())->get();
+	$heroSliderImages = json_decode(get_setting('home_slider_1_images'), true) ?: [];
+	$heroSliderLinks = json_decode(get_setting('home_slider_1_links'), true) ?: [];
+	$bannerOneImages = json_decode(get_setting('home_banner_1_images'), true) ?: [];
+	$bannerOneLinks = json_decode(get_setting('home_banner_1_links'), true) ?: [];
+	$bannerTwoImages = json_decode(get_setting('home_banner_2_images'), true) ?: [];
+	$bannerTwoLinks = json_decode(get_setting('home_banner_2_links'), true) ?: [];
+	$bannerThreeImages = json_decode(get_setting('home_banner_4_images'), true) ?: [];
+	$bannerThreeLinks = json_decode(get_setting('home_banner_4_links'), true) ?: [];
 @endphp
 <h6 class="fw-600">{{ translate('Home Page Settings') }}</h6>
 <div class="accordion" id="accordionExample">
 	<!-- Home Slider -->
 	<div class="card border-bottom">
 		<div class="card-header c-pointer" data-toggle="collapse" data-target="#collapseHomeSlider" aria-expanded="true" aria-controls="collapseHomeSlider">
-			<h6 class="my-2">{{ translate('Home Page Main Sliders') }}</h6>
+			<h6 class="my-2">{{ translate('Homepage Hero Slider') }}</h6>
 			<i class="las la-angle-down opacity-60 fs-20"></i>
 		</div>
 		<div id="collapseHomeSlider" class="collapse show" data-parent="#accordionExample">
 			<div class="card-body">
+				<div class="alert alert-info mb-4">
+					{{ translate('This block powers the full-width hero carousel at the very top of the homepage. Only images and links are backed by settings here; the text overlays shown in the component are not stored in these homepage settings.') }}
+				</div>
 				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
 					@csrf
-					<div class="form-group row gutters-10 border-bottom pb-4 mb-4">
+					<div class="form-group row gutters-10">
 						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('1st Sliders image & link')}}</label>
-							<small>{{ translate('Recommended size').' 640x310' }}</small>
+							<label class="from-label d-block">{{translate('Hero Slide Image & Link')}}</label>
+							<small class="d-block">{{ translate('This appears in the top homepage hero carousel.') }}</small>
+							<small class="d-block mt-1">{{ translate('Recommended image size').' 1440 x 700' }}</small>
+							<small class="d-block mt-1">{{ translate('Only this slider group is active on the current homepage. Legacy slider groups 2 to 4 have been disabled below.') }}</small>
 						</div>
 						<div class="col-lg-9">
 							<div class="home-slider-1-target">
 								<input type="hidden" name="types[]" value="home_slider_1_images">
 								<input type="hidden" name="types[]" value="home_slider_1_links">
-								@if (get_setting('home_slider_1_images') != null)
-								@foreach (json_decode(get_setting('home_slider_1_images'), true) as $key => $value)
-									<div class="row">
+								@foreach ($heroSliderImages as $key => $value)
+									<div class="row gutters-5 align-items-start mb-3">
 										<div class="col-lg-5">
 											<div class="form-group">
 												<div class="input-group" data-toggle="aizuploader" data-type="image">
@@ -41,7 +53,8 @@
 											</div>
 										</div>
 										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_1_links[]" value="{{ json_decode(get_setting('home_slider_1_links'),true)[$key] }}" class="form-control">
+											<label class="from-label d-block">{{ translate('Hero Slide Link') }}</label>
+											<input type="text" placeholder="" name="home_slider_1_links[]" value="{{ $heroSliderLinks[$key] ?? '' }}" class="form-control">
 										</div>
 										<div class="col-auto">
 											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
@@ -50,7 +63,6 @@
 										</div>
 									</div>
 								@endforeach
-								@endif
 							</div>
 							<div class="text-right">
 								<button
@@ -71,6 +83,7 @@
 											</div>
 										</div>
 										<div class="col-lg">
+											<label class="from-label d-block">{{ translate('Hero Slide Link') }}</label>
 											<input type="text" placeholder="" name="home_slider_1_links[]" class="form-control">
 										</div>
 										<div class="col-auto">
@@ -80,220 +93,266 @@
 										</div>
 									</div>'
 									data-target=".home-slider-1-target">
-									{{ translate('Add New') }}
+									{{ translate('Add Hero Slide') }}
 								</button>
 							</div>
 						</div>
 					</div>
-					<div class="form-group row gutters-10  border-bottom pb-4 mb-4">
-						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('2nd Sliders image & link')}}</label>
-							<small>{{ translate('Recommended size').' 310x310' }}</small>
-						</div>
-						<div class="col-lg-9">
-							<div class="home-slider-2-target">
-								<input type="hidden" name="types[]" value="home_slider_2_images">
-								<input type="hidden" name="types[]" value="home_slider_2_links">
-								@if (get_setting('home_slider_2_images') != null)
-								@foreach (json_decode(get_setting('home_slider_2_images'), true) as $key => $value)
-									<div class="row">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_slider_2_images[]" class="selected-files" value="{{ $value }}">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_2_links[]" value="{{ json_decode(get_setting('home_slider_2_links'),true)[$key] }}" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>
-								@endforeach
-								@endif
-							</div>
-							<div class="text-right">
-								<button
-									type="button"
-									class="btn btn-soft-secondary btn-sm"
-									data-toggle="add-more"
-									data-content='<div class="row gutters-5">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_slider_2_images[]" class="selected-files">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_2_links[]" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>'
-									data-target=".home-slider-2-target">
-									{{ translate('Add New') }}
-								</button>
-							</div>
-						</div>
+					<div class="text-right">
+						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
 					</div>
-					<div class="form-group row gutters-10 border-bottom pb-4 mb-4">
-						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('3rd Sliders image & link')}}</label>
-							<small>{{ translate('Recommended size').' 310x145' }}</small>
-						</div>
-						<div class="col-lg-9">
-							<div class="home-slider-3-target">
-								<input type="hidden" name="types[]" value="home_slider_3_images">
-								<input type="hidden" name="types[]" value="home_slider_3_links">
-								@if (get_setting('home_slider_3_images') != null)
-								@foreach (json_decode(get_setting('home_slider_3_images'), true) as $key => $value)
-									<div class="row">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_slider_3_images[]" class="selected-files" value="{{ $value }}">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_3_links[]" value="{{ json_decode(get_setting('home_slider_3_links'),true)[$key] }}" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>
-								@endforeach
-								@endif
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<!-- Homepage banners -->
+	<div class="card border-bottom">
+		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseHomepageBanners" aria-expanded="true" aria-controls="collapseHomepageBanners">
+			<h6 class="my-2">{{ translate('Homepage Banners') }}</h6>
+			<i class="las la-angle-down opacity-60 fs-20"></i>
+		</div>
+		<div id="collapseHomepageBanners" class="collapse" data-parent="#accordionExample">
+			<div class="card-body">
+				<div class="alert alert-info mb-4">
+					{{ translate('These three blocks map directly to the live homepage banner components. The saved setting keys stay exactly the same behind the scenes, so existing homepage content keeps working.') }}
+				</div>
+				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
+					@csrf
+					<div class="border rounded p-4 mb-4">
+						<div class="row gutters-10">
+							<div class="col-lg-3">
+								<h6 class="mb-2">{{ translate('Banner 1') }}</h6>
+								<p class="text-muted mb-2">{{ translate('This is the first horizontal homepage banner carousel below the popular categories section.') }}</p>
+								<small class="d-block">{{ translate('Recommended image size').' 1354 x 246' }}</small>
+								<small class="d-block mt-1">{{ translate('Every uploaded image becomes one Banner 1 slide.') }}</small>
 							</div>
-							<div class="text-right">
-								<button
-									type="button"
-									class="btn btn-soft-secondary btn-sm"
-									data-toggle="add-more"
-									data-content='<div class="row gutters-5">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+							<div class="col-lg-9">
+								<input type="hidden" name="types[]" value="home_banner_1_images">
+								<input type="hidden" name="types[]" value="home_banner_1_links">
+								<div class="home-banner-1-target">
+									@foreach ($bannerOneImages as $key => $value)
+										<div class="row gutters-5 align-items-start mb-3">
+											<div class="col-lg-5">
+												<div class="form-group">
+													<label class="from-label d-block">{{ translate('Banner 1 Image') }}</label>
+													<div class="input-group" data-toggle="aizuploader" data-type="image">
+														<div class="input-group-prepend">
+															<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+														</div>
+														<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+														<input type="hidden" name="home_banner_1_images[]" class="selected-files" value="{{ $value }}">
 													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_slider_3_images[]" class="selected-files">
+													<div class="file-preview box sm"></div>
 												</div>
-												<div class="file-preview box sm"></div>
+											</div>
+											<div class="col-lg">
+												<label class="from-label d-block">{{ translate('Banner 1 Link') }}</label>
+												<input type="text" placeholder="" name="home_banner_1_links[]" value="{{ $bannerOneLinks[$key] ?? '' }}" class="form-control">
+											</div>
+											<div class="col-auto">
+												<button type="button" class="mt-4 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
+													<i class="las la-times"></i>
+												</button>
 											</div>
 										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_3_links[]" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>'
-									data-target=".home-slider-3-target">
-									{{ translate('Add New') }}
-								</button>
-							</div>
-						</div>
-					</div>
-					<div class="form-group row gutters-10">
-						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('4th Sliders image & link')}}</label>
-							<small>{{ translate('Recommended size').' 310x145' }}</small>
-						</div>
-						<div class="col-lg-9">
-							<div class="home-slider-4-target">
-								<input type="hidden" name="types[]" value="home_slider_4_images">
-								<input type="hidden" name="types[]" value="home_slider_4_links">
-								@if (get_setting('home_slider_4_images') != null)
-								@foreach (json_decode(get_setting('home_slider_4_images'), true) as $key => $value)
-									<div class="row">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+									@endforeach
+								</div>
+								<div class="text-right">
+									<button
+										type="button"
+										class="btn btn-soft-secondary btn-sm"
+										data-toggle="add-more"
+										data-content='<div class="row gutters-5 align-items-start mb-3">
+											<div class="col-lg-5">
+												<div class="form-group">
+													<label class="from-label d-block">{{ translate('Banner 1 Image') }}</label>
+													<div class="input-group" data-toggle="aizuploader" data-type="image">
+														<div class="input-group-prepend">
+															<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+														</div>
+														<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+														<input type="hidden" name="home_banner_1_images[]" class="selected-files">
 													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_slider_4_images[]" class="selected-files" value="{{ $value }}">
+													<div class="file-preview box sm"></div>
 												</div>
-												<div class="file-preview box sm"></div>
 											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_4_links[]" value="{{ json_decode(get_setting('home_slider_4_links'),true)[$key] }}" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>
-								@endforeach
-								@endif
-							</div>
-							<div class="text-right">
-								<button
-									type="button"
-									class="btn btn-soft-secondary btn-sm"
-									data-toggle="add-more"
-									data-content='<div class="row gutters-5">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_slider_4_images[]" class="selected-files">
-												</div>
-												<div class="file-preview box sm"></div>
+											<div class="col-lg">
+												<label class="from-label d-block">{{ translate('Banner 1 Link') }}</label>
+												<input type="text" placeholder="" name="home_banner_1_links[]" class="form-control">
 											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_slider_4_links[]" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>'
-									data-target=".home-slider-4-target">
-									{{ translate('Add New') }}
-								</button>
+											<div class="col-auto">
+												<button type="button" class="mt-4 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
+													<i class="las la-times"></i>
+												</button>
+											</div>
+										</div>'
+										data-target=".home-banner-1-target">
+										{{ translate('Add Banner 1 Slide') }}
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
 
-					<div class="text-right">
+					<div class="border rounded p-4 mb-4">
+						<div class="row gutters-10">
+							<div class="col-lg-3">
+								<h6 class="mb-2">{{ translate('Banner 2') }}</h6>
+								<p class="text-muted mb-2">{{ translate('This is the split homepage banner shown below Product Section 1.') }}</p>
+								<small class="d-block">{{ translate('Background image recommended size').' 1600 x 900' }}</small>
+								<small class="d-block mt-1">{{ translate('Product image recommended size').' 800 x 1000' }}</small>
+								<small class="d-block mt-1">{{ translate('Only the product image and product link are editable here. The text and button label are currently hardcoded on the frontend.') }}</small>
+							</div>
+							<div class="col-lg-9">
+								<input type="hidden" name="types[]" value="home_banner_2_images">
+								<input type="hidden" name="types[]" value="home_banner_2_links">
+
+								<div class="row gutters-10 border-bottom pb-4 mb-4">
+									<div class="col-lg-5">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 2 Background Image') }}</label>
+											<div class="input-group" data-toggle="aizuploader" data-type="image">
+												<div class="input-group-prepend">
+													<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+												</div>
+												<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+												<input type="hidden" name="home_banner_2_images[0]" class="selected-files" value="{{ $bannerTwoImages[0] ?? '' }}">
+											</div>
+											<div class="file-preview box sm"></div>
+											<input type="hidden" name="home_banner_2_links[0]" value="{{ $bannerTwoLinks[0] ?? '' }}">
+											<small class="text-muted d-block mt-2">{{ translate('This image is used as the full-width background. Its saved link is not used on the live homepage.') }}</small>
+										</div>
+									</div>
+								</div>
+
+								<div class="row gutters-10">
+									<div class="col-lg-5">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 2 Product Image') }}</label>
+											<div class="input-group" data-toggle="aizuploader" data-type="image">
+												<div class="input-group-prepend">
+													<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+												</div>
+												<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+												<input type="hidden" name="home_banner_2_images[1]" class="selected-files" value="{{ $bannerTwoImages[1] ?? '' }}">
+											</div>
+											<div class="file-preview box sm"></div>
+										</div>
+									</div>
+									<div class="col-lg-7">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 2 Button Link') }}</label>
+											<input type="text" placeholder="" name="home_banner_2_links[1]" value="{{ $bannerTwoLinks[1] ?? '' }}" class="form-control">
+											<small class="text-muted d-block mt-2">{{ translate('This link is used by the visible "DISCOVER MORE" button in Banner 2.') }}</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="border rounded p-4">
+						<div class="row gutters-10">
+							<div class="col-lg-3">
+								<h6 class="mb-2">{{ translate('Banner 3') }}</h6>
+								<p class="text-muted mb-2">{{ translate('This is the lower homepage banner block with a rotating carousel and a newsletter image card.') }}</p>
+								<small class="d-block">{{ translate('Carousel slide image size').' 1600 x 700' }}</small>
+								<small class="d-block mt-1">{{ translate('Newsletter image size').' 500 x 350' }}</small>
+								<small class="d-block mt-1">{{ translate('Slides 1 to 3 rotate in the carousel. The newsletter image appears in the centered subscription card.') }}</small>
+							</div>
+							<div class="col-lg-9">
+								<input type="hidden" name="types[]" value="home_banner_4_images">
+								<input type="hidden" name="types[]" value="home_banner_4_links">
+
+								<div class="row gutters-10 border-bottom pb-4 mb-4">
+									<div class="col-lg-5">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Slide 1 Image') }}</label>
+											<div class="input-group" data-toggle="aizuploader" data-type="image">
+												<div class="input-group-prepend">
+													<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+												</div>
+												<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+												<input type="hidden" name="home_banner_4_images[0]" class="selected-files" value="{{ $bannerThreeImages[0] ?? '' }}">
+											</div>
+											<div class="file-preview box sm"></div>
+										</div>
+									</div>
+									<div class="col-lg-7">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Slide 1 Link') }}</label>
+											<input type="text" placeholder="" name="home_banner_4_links[0]" value="{{ $bannerThreeLinks[0] ?? '' }}" class="form-control">
+										</div>
+									</div>
+								</div>
+
+								<div class="row gutters-10 border-bottom pb-4 mb-4">
+									<div class="col-lg-5">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Slide 2 Image') }}</label>
+											<div class="input-group" data-toggle="aizuploader" data-type="image">
+												<div class="input-group-prepend">
+													<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+												</div>
+												<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+												<input type="hidden" name="home_banner_4_images[1]" class="selected-files" value="{{ $bannerThreeImages[1] ?? '' }}">
+											</div>
+											<div class="file-preview box sm"></div>
+										</div>
+									</div>
+									<div class="col-lg-7">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Slide 2 Link') }}</label>
+											<input type="text" placeholder="" name="home_banner_4_links[1]" value="{{ $bannerThreeLinks[1] ?? '' }}" class="form-control">
+										</div>
+									</div>
+								</div>
+
+								<div class="row gutters-10 border-bottom pb-4 mb-4">
+									<div class="col-lg-5">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Slide 3 Image') }}</label>
+											<div class="input-group" data-toggle="aizuploader" data-type="image">
+												<div class="input-group-prepend">
+													<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+												</div>
+												<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+												<input type="hidden" name="home_banner_4_images[2]" class="selected-files" value="{{ $bannerThreeImages[2] ?? '' }}">
+											</div>
+											<div class="file-preview box sm"></div>
+										</div>
+									</div>
+									<div class="col-lg-7">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Slide 3 Link') }}</label>
+											<input type="text" placeholder="" name="home_banner_4_links[2]" value="{{ $bannerThreeLinks[2] ?? '' }}" class="form-control">
+										</div>
+									</div>
+								</div>
+
+								<div class="row gutters-10">
+									<div class="col-lg-5">
+										<div class="form-group mb-0">
+											<label class="from-label d-block">{{ translate('Banner 3 Newsletter Image') }}</label>
+											<div class="input-group" data-toggle="aizuploader" data-type="image">
+												<div class="input-group-prepend">
+													<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
+												</div>
+												<div class="form-control file-amount">{{ translate('Choose File') }}</div>
+												<input type="hidden" name="home_banner_4_images[3]" class="selected-files" value="{{ $bannerThreeImages[3] ?? '' }}">
+											</div>
+											<div class="file-preview box sm"></div>
+											<input type="hidden" name="home_banner_4_links[3]" value="{{ $bannerThreeLinks[3] ?? '' }}">
+											<small class="text-muted d-block mt-2">{{ translate('This image fills the newsletter card. Its saved link is not used on the live homepage.') }}</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="text-right mt-4">
 						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
 					</div>
 				</form>
@@ -336,11 +395,15 @@
 	<!-- Product section 1 -->
 	<div class="card border-bottom">
 		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseProductSectionOne" aria-expanded="true" aria-controls="collapseProductSectionOne">
-			<h6 class="my-2">{{ translate('Product section 1') }}</h6>
+			<h6 class="my-2">{{ translate('Today\'s Deal Section') }}</h6>
 			<i class="las la-angle-down opacity-60 fs-20"></i>
 		</div>
 		<div id="collapseProductSectionOne" class="collapse" data-parent="#accordionExample">
 			<div class="card-body">
+				<div class="alert alert-info mb-0">
+					{{ translate('Today\'s Deal products are now controlled from Admin Products using the Today\'s Deal toggle on each product. The homepage slider and /todays-deal collection page no longer use the manual homepage product picker.') }}
+				</div>
+				{{-- Legacy manual Today’s Deal settings kept for reference only.
 				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
 					@csrf
 					<div class="form-group row">
@@ -365,93 +428,7 @@
 						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
 					</div>
 				</form>
-			</div>
-		</div>
-	</div>
-
-	<!-- Home banner section 1 -->
-	<div class="card border-bottom">
-		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseHomeBannerOne" aria-expanded="true" aria-controls="collapseHomeBannerOne">
-			<h6 class="my-2">{{ translate('Home banner section 1') }}</h6>
-			<i class="las la-angle-down opacity-60 fs-20"></i>
-		</div>
-		<div id="collapseHomeBannerOne" class="collapse" data-parent="#accordionExample">
-			<div class="card-body">
-				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
-					@csrf
-					<div class="form-group row gutters-10">
-						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('Banner image & link')}}</label>
-							<small>{{ translate('Recommended size').' 1300x145' }}</small>
-						</div>
-						<div class="col-lg-9">
-							<div class="home-banner-1-target">
-								<input type="hidden" name="types[]" value="home_banner_1_images">
-								<input type="hidden" name="types[]" value="home_banner_1_links">
-								@if (get_setting('home_banner_1_images') != null)
-								@foreach (json_decode(get_setting('home_banner_1_images'), true) as $key => $value)
-									<div class="row">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_banner_1_images[]" class="selected-files" value="{{ $value }}">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_banner_1_links[]" value="{{ json_decode(get_setting('home_banner_1_links'),true)[$key] }}" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>
-								@endforeach
-								@endif
-							</div>
-							<div class="text-right">
-								<button
-									type="button"
-									class="btn btn-soft-secondary btn-sm"
-									data-toggle="add-more"
-									data-content='<div class="row gutters-5">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_banner_1_images[]" class="selected-files">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_banner_1_links[]" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>'
-									data-target=".home-banner-1-target">
-									{{ translate('Add New') }}
-								</button>
-							</div>
-						</div>
-					</div>
-					<div class="text-right">
-						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
-					</div>
-				</form>
+				--}}
 			</div>
 		</div>
 	</div>
@@ -607,93 +584,6 @@
 									<option value="{{ $product->id }}">{{ $product->getTranslation('name') }}</option>
 								@endforeach
 							</select>
-						</div>
-					</div>
-					<div class="text-right">
-						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-
-	<!-- Home banner section 2 -->
-	<div class="card border-bottom">
-		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseHomeBannerTwo" aria-expanded="true" aria-controls="collapseHomeBannerTwo">
-			<h6 class="my-2">{{ translate('Home banner section 2') }}</h6>
-			<i class="las la-angle-down opacity-60 fs-20"></i>
-		</div>
-		<div id="collapseHomeBannerTwo" class="collapse" data-parent="#accordionExample">
-			<div class="card-body">
-				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
-					@csrf
-					<div class="form-group row gutters-10">
-						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('Banner image & link')}}</label>
-							<small>{{ translate('Recommended size').' 640x145' }}</small>
-						</div>
-						<div class="col-lg-9">
-							<div class="home-banner-2-target">
-								<input type="hidden" name="types[]" value="home_banner_2_images">
-								<input type="hidden" name="types[]" value="home_banner_2_links">
-								@if (get_setting('home_banner_2_images') != null)
-								@foreach (json_decode(get_setting('home_banner_2_images'), true) as $key => $value)
-									<div class="row">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_banner_2_images[]" class="selected-files" value="{{ $value }}">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_banner_2_links[]" value="{{ json_decode(get_setting('home_banner_2_links'),true)[$key] }}" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>
-								@endforeach
-								@endif
-							</div>
-							<div class="text-right">
-								<button
-									type="button"
-									class="btn btn-soft-secondary btn-sm"
-									data-toggle="add-more"
-									data-content='<div class="row gutters-5">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_banner_2_images[]" class="selected-files">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_banner_2_links[]" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>'
-									data-target=".home-banner-2-target">
-									{{ translate('Add New') }}
-								</button>
-							</div>
 						</div>
 					</div>
 					<div class="text-right">
@@ -924,7 +814,9 @@
 		</div>
 	</div>
 
-	<!-- Home banner section 3 -->
+	{{-- Legacy homepage banner section 3 kept in source for reference.
+	     The live homepage does not render HomeBannerSectionThree in App.vue. --}}
+	{{--
 	<div class="card border-bottom">
 		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseHomeBannerThree" aria-expanded="true" aria-controls="collapseHomeBannerThree">
 			<h6 class="my-2">{{ translate('Home banner section 3') }}</h6>
@@ -1010,6 +902,7 @@
 			</div>
 		</div>
 	</div>
+	--}}
 
 	@if (addon_is_activated('multi_vendor'))
 		{{-- shop section 4 --}}
@@ -1236,93 +1129,6 @@
 									<option value="{{ $product->id }}">{{ $product->getTranslation('name') }}</option>
 								@endforeach
 							</select>
-						</div>
-					</div>
-					<div class="text-right">
-						<button type="submit" class="btn btn-primary">{{ translate('Update') }}</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-
-	<!-- Home banner section 4 -->
-	<div class="card border-bottom">
-		<div class="card-header collapsed c-pointer" data-toggle="collapse" data-target="#collapseHomeBannerFour" aria-expanded="true" aria-controls="collapseHomeBannerFour">
-			<h6 class="my-2">{{ translate('Home banner section 4') }}</h6>
-			<i class="las la-angle-down opacity-60 fs-20"></i>
-		</div>
-		<div id="collapseHomeBannerFour" class="collapse" data-parent="#accordionExample">
-			<div class="card-body">
-				<form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data">
-					@csrf
-					<div class="form-group row gutters-10">
-						<div class="col-lg-3">
-							<label class="from-label d-block">{{translate('Banner image & link')}}</label>
-							<small>{{ translate('Recommended size').' 310x145' }}</small>
-						</div>
-						<div class="col-lg-9">
-							<div class="home-banner-4-target">
-								<input type="hidden" name="types[]" value="home_banner_4_images">
-								<input type="hidden" name="types[]" value="home_banner_4_links">
-								@if (get_setting('home_banner_4_images') != null)
-								@foreach (json_decode(get_setting('home_banner_4_images'), true) as $key => $value)
-									<div class="row">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_banner_4_images[]" class="selected-files" value="{{ $value }}">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_banner_4_links[]" value="{{ json_decode(get_setting('home_banner_4_links'),true)[$key] }}" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>
-								@endforeach
-								@endif
-							</div>
-							<div class="text-right">
-								<button
-									type="button"
-									class="btn btn-soft-secondary btn-sm"
-									data-toggle="add-more"
-									data-content='<div class="row gutters-5">
-										<div class="col-lg-5">
-											<div class="form-group">
-												<div class="input-group" data-toggle="aizuploader" data-type="image">
-													<div class="input-group-prepend">
-														<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse')}}</div>
-													</div>
-													<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-													<input type="hidden" name="home_banner_4_images[]" class="selected-files">
-												</div>
-												<div class="file-preview box sm"></div>
-											</div>
-										</div>
-										<div class="col-lg">
-											<input type="text" placeholder="" name="home_banner_4_links[]" class="form-control">
-										</div>
-										<div class="col-auto">
-											<button type="button" class="mt-1 btn btn-icon btn-circle btn-sm btn-soft-danger" data-toggle="remove-parent" data-parent=".row">
-												<i class="las la-times"></i>
-											</button>
-										</div>
-									</div>'
-									data-target=".home-banner-4-target">
-									{{ translate('Add New') }}
-								</button>
-							</div>
 						</div>
 					</div>
 					<div class="text-right">

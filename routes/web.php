@@ -105,6 +105,7 @@ Route::get('/social-login/{provider}/callback', [LoginController::class, 'handle
 
 Route::get('/product/{slug}', [HomeController::class, 'index'])->name('product');
 Route::get('/category/{slug}', [HomeController::class, 'index'])->name('products.category');
+Route::get('/todays-deal', [HomeController::class, 'index'])->name('todays-deal');
 
 Route::get('/blog-details/{slug}', [HomeController::class, 'index'])->name('blog.details');
 

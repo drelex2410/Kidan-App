@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\AdminShopService;
 use App\Models\Setting;
 use App\Models\User;
 use Artisan;
@@ -20,10 +21,12 @@ class SettingController extends Controller
         $this->middleware(['permission:third_party_setting'])->only('third_party_settings');
     }
 
-    public function general_setting(Request $request)
+    public function general_setting(Request $request, AdminShopService $adminShopService)
     {
         CoreComponentRepository::instantiateShopRepository();
-        return view('backend.settings.general_settings');
+        $shop = $adminShopService->ensureShopForUser($request->user());
+
+        return view('backend.settings.general_settings', compact('shop'));
     }
 
     public function otp_settings(Request $request)
@@ -301,10 +304,19 @@ class SettingController extends Controller
         return back();
     }
 
-    public function shop_update(Request $request)
+    public function shop_update(Request $request, AdminShopService $adminShopService)
     {
-        $shop = auth()->user()->shop;
-        $shop->min_order = $request->min_order;
+        $validated = $request->validate([
+            'min_order' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $shop = $adminShopService->ensureShopForUser($request->user());
+
+        if (!$shop) {
+            abort(500, 'Unable to resolve the inhouse shop for this account.');
+        }
+
+        $shop->min_order = $validated['min_order'];
         $shop->save();
 
         flash(translate("Settings updated successfully"))->success();

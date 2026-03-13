@@ -15,6 +15,7 @@ class WishlistCollection extends ResourceCollection
                     'name' => $data->product->name,
                     'slug' => $data->product->slug,
                     'thumbnail_image' => api_asset($data->product->thumbnail_img),
+                    'photos' => $this->convertPhotos($data->product->photos),
                     'base_price' => (double) product_base_price($data->product),
                     'base_discounted_price' => (double) product_discounted_base_price($data->product),
                     'stock' => $data->product->stock,
@@ -35,5 +36,16 @@ class WishlistCollection extends ResourceCollection
             'success' => true,
             'status' => 200
         ];
+    }
+
+    protected function convertPhotos($photos): array
+    {
+        return collect(explode(',', (string) $photos))
+            ->map(fn ($item) => trim($item))
+            ->filter()
+            ->map(fn ($item) => api_asset($item))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

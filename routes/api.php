@@ -78,6 +78,7 @@ Route::group(['prefix' => 'v1', 'as' => 'api.'], function () {
         Route::get('/details/{product_slug}', [ProductController::class, 'show']);
         Route::post('get-by-ids', [ProductController::class, 'get_by_ids']);
         Route::get('search', [ProductController::class, 'search']);
+        Route::get('todays-deal', [ProductController::class, 'todays_deal']);
         Route::get('related/{product_id}', [ProductController::class, 'related']);
         Route::get('bought-together/{product_id}', [ProductController::class, 'bought_together']);
         Route::get('random/{limit}/{product_id?}', [ProductController::class, 'random_products']);

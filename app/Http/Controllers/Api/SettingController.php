@@ -53,11 +53,15 @@ class SettingController extends Controller
 
             case 'product_section_one':
                 $data = Cache::remember('product_section_one', 86400, function () {
-                    $product_section_1_products = get_setting('home_product_section_1_products')
-                        ? filter_products(Product::whereIn('id', json_decode(get_setting('home_product_section_1_products'))))->get()
-                        : [];
+                    $product_section_1_products = Product::query()
+                        ->with(['variations'])
+                        ->todayDeal()
+                        ->frontendVisible()
+                        ->orderByDesc('updated_at')
+                        ->get();
+
                     return [
-                        'title' => get_setting('home_product_section_1_title'),
+                        'title' => "Today's Deal",
                         'products' => new ProductCollection($product_section_1_products)
                     ];
                 });

@@ -32,6 +32,7 @@ class ProductController extends Controller
         $this->middleware(['permission:add_products'])->only('create');
         $this->middleware(['permission:view_products'])->only('show');
         $this->middleware(['permission:edit_products'])->only('edit');
+        $this->middleware(['permission:edit_products'])->only('updateTodayDeal');
         $this->middleware(['permission:duplicate_products'])->only('duplicate');
         $this->middleware(['permission:delete_products'])->only('destroy');
     }
@@ -734,6 +735,26 @@ class ProductController extends Controller
             'product_id' => $product->id,
             'published' => (int) $product->published,
             'approved' => (int) $product->approved,
+        ]);
+
+        return 1;
+    }
+
+    public function updateTodayDeal(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => ['required', 'integer', 'exists:products,id'],
+            'status' => ['required', 'boolean'],
+        ]);
+
+        $product = Product::findOrFail($validated['id']);
+        $product->today_deal = (int) $validated['status'];
+        $product->save();
+
+        cache_clear();
+        Log::info('Product Today\'s Deal status updated', [
+            'product_id' => $product->id,
+            'today_deal' => (int) $product->today_deal,
         ]);
 
         return 1;

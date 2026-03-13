@@ -15,6 +15,7 @@ class ProductCollection extends ResourceCollection
                     'name' => $data->getTranslation('name'),
                     'slug' => $data->slug,
                     'thumbnail_image' => api_asset($data->thumbnail_img),
+                    'photos' => $this->convertPhotos($data->photos),
                     'base_price' => (double) product_base_price($data),
                     'base_discounted_price' => (double) product_discounted_base_price($data),
                     'stock' => $data->stock,
@@ -37,5 +38,16 @@ class ProductCollection extends ResourceCollection
             'success' => true,
             'status' => 200
         ];
+    }
+
+    protected function convertPhotos($photos): array
+    {
+        return collect(explode(',', (string) $photos))
+            ->map(fn ($item) => trim($item))
+            ->filter()
+            ->map(fn ($item) => api_asset($item))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

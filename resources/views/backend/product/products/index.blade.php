@@ -91,6 +91,7 @@
                         <th data-breakpoints="md" width="20%">{{ translate('Categories') }}</th>
                         <th data-breakpoints="md">{{ translate('Brand') }}</th>
                         <th data-breakpoints="md">{{ translate('Published') }}</th>
+                        <th data-breakpoints="md">{{ translate('Today\'s Deal') }}</th>
                         <th data-breakpoints="md" class="text-right">{{ translate('Options') }}</th>
                     </tr>
                 </thead>
@@ -185,6 +186,13 @@
                                 <label class="aiz-switch aiz-switch-success mb-0">
                                     <input onchange="update_published(this)" value="{{ $product->id }}" type="checkbox"
                                         @if ($product->published == 1) checked @endif>
+                                    <span class="slider round"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <label class="aiz-switch aiz-switch-success mb-0">
+                                    <input onchange="update_today_deal(this)" value="{{ $product->id }}" type="checkbox"
+                                        @if ($product->today_deal) checked @endif>
                                     <span class="slider round"></span>
                                 </label>
                             </td>
@@ -298,6 +306,21 @@
         }, function(data) {
             if (data == 1) {
                 AIZ.plugins.notify('success', '{{ translate('Published products updated successfully') }}');
+            } else {
+                AIZ.plugins.notify('danger', '{{ translate('Something went wrong') }}');
+            }
+        });
+    }
+
+    function update_today_deal(el) {
+        var status = el.checked ? 1 : 0;
+        $.post('{{ route('product.today_deal') }}', {
+            _token: '{{ csrf_token() }}',
+            id: el.value,
+            status: status
+        }, function(data) {
+            if (data == 1) {
+                AIZ.plugins.notify('success', '{{ translate('Today\'s Deal products updated successfully') }}');
             } else {
                 AIZ.plugins.notify('danger', '{{ translate('Something went wrong') }}');
             }

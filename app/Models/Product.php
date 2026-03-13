@@ -12,6 +12,12 @@ class Product extends Model
 
     protected $with = ['product_translations', 'taxes'];
 
+    protected $casts = [
+        'published' => 'boolean',
+        'approved' => 'boolean',
+        'today_deal' => 'boolean',
+    ];
+
     public function getTranslation($field = '', $lang = false)
     {
         $lang = $lang == false ? App::getLocale() : $lang;
@@ -119,5 +125,15 @@ class Product extends Model
     public function shop()
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    public function scopeTodayDeal($query)
+    {
+        return $query->where('today_deal', 1);
+    }
+
+    public function scopeFrontendVisible($query)
+    {
+        return $query->where('published', 1)->where('approved', 1);
     }
 }

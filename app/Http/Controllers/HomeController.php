@@ -36,6 +36,9 @@ class HomeController extends Controller
                 $meta['meta_description'] = $product->meta_description ? $product->meta_description : $meta['meta_description'];
                 $meta['meta_image'] = $product->meta_image ? api_asset($product->meta_image) : $meta['meta_image'];
             }
+        } elseif (Route::currentRouteName() == 'todays-deal') {
+            $meta['meta_title'] = "Today's Deal | " . $meta['meta_title'];
+            $meta['meta_description'] = 'Explore our curated Today\'s Deal collection.';
         } elseif (Route::currentRouteName() == 'products.category') {
             $category = Category::where('slug', $slug)->first();
             if ($category) {

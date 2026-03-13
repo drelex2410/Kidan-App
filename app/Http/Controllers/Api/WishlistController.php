@@ -30,6 +30,7 @@ class WishlistController extends Controller
                 'name' => $product->name,
                 'slug' => $product->slug,
                 'thumbnail_image' => api_asset($product->thumbnail_img),
+                'photos' => $this->convertPhotos($product->photos),
                 'base_price' => (float) product_base_price($product),
                 'base_discounted_price' => (float) product_discounted_base_price($product),
                 'stock' => $product->stock,
@@ -50,5 +51,16 @@ class WishlistController extends Controller
             'success' => true,
             'message' => translate('Product is successfully removed from your wishlist')
         ], 200);
+    }
+
+    private function convertPhotos($photos): array
+    {
+        return collect(explode(',', (string) $photos))
+            ->map(fn ($item) => trim($item))
+            ->filter()
+            ->map(fn ($item) => api_asset($item))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

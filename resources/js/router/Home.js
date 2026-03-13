@@ -1,6 +1,7 @@
 let Home = () => import("../pages/Home.vue");
 let ProductDetails = () => import("../pages/ProductDetails.vue");
 let ProductListing = () => import("../pages/ProductListing.vue");
+let TodayDealListing = () => import("../pages/TodayDealListing.vue");
 let TrackOrder = () => import("../pages/TrackOrder.vue");
 let NewTrackOrder = () => import("../pages/NewTrackOrder.vue");
 let AllCategories = () => import("../pages/AllCategories.vue");
@@ -53,6 +54,12 @@ export default [
         path: "/search",
         component: ProductListing,
         name: "Shop",
+        meta: { requiresAuth: false },
+    },
+    {
+        path: "/todays-deal",
+        component: TodayDealListing,
+        name: "TodayDeal",
         meta: { requiresAuth: false },
     },
     {

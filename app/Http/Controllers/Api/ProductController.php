@@ -11,13 +11,17 @@ use App\Http\Resources\ProductSingleCollection;
 use App\Http\Resources\ShopCollection;
 use App\Models\Attribute;
 use App\Models\AttributeCategory;
+use App\Models\AttributeValue;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\OrderDetail;
 use App\Models\Product;
+use App\Models\ProductAttributeValue;
+use App\Models\ProductVariationCombination;
 use App\Models\Shop;
 use App\Utility\CategoryUtility;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
@@ -221,6 +225,39 @@ class ProductController extends Controller
         ]);
     }
 
+    public function todays_deal(Request $request)
+    {
+        $selectedCategoryIds = $this->parseIdList($request->category_ids);
+        $selectedAttributeValueIds = $this->parseIdList($request->attribute_values);
+
+        $products = Product::with(['variations'])
+            ->todayDeal()
+            ->frontendVisible();
+
+        $this->applyTodayDealFilters(
+            $products,
+            $selectedCategoryIds,
+            $selectedAttributeValueIds,
+            $request->min_price,
+            $request->max_price
+        );
+        $this->applyProductSorting($products, $request->sort_by);
+
+        $collection = new ProductCollection($products->paginate(16));
+        $filters = $this->buildTodayDealFilters();
+
+        return response()->json([
+            'success' => true,
+            'title' => "Today's Deal",
+            'description' => 'Explore our best selling catalogue, Join hundreds of people with exquisite taste.',
+            'products' => $collection,
+            'totalPage' => $collection->lastPage(),
+            'currentPage' => $collection->currentPage(),
+            'total' => $collection->total(),
+            'filters' => $filters,
+        ]);
+    }
+
     public function ajax_search($search_keyword)
     {
 
@@ -310,6 +347,241 @@ class ProductController extends Controller
             'success' => true,
             'specifications' => $products_array,
         ]);
+    }
+
+    private function parseIdList($value): array
+    {
+        if (is_array($value)) {
+            return collect($value)
+                ->map(fn ($item) => (int) $item)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        return collect(explode(',', $value))
+            ->map(fn ($item) => (int) trim($item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function applyTodayDealFilters($products, array $selectedCategoryIds, array $selectedAttributeValueIds, $minPrice, $maxPrice): void
+    {
+        if (!empty($selectedCategoryIds)) {
+            $products->whereHas('product_categories', function ($query) use ($selectedCategoryIds) {
+                $query->whereIn('category_id', $selectedCategoryIds);
+            });
+        }
+
+        if ($minPrice !== null && $minPrice !== '') {
+            $products->where('lowest_price', '>=', (float) $minPrice);
+        }
+
+        if ($maxPrice !== null && $maxPrice !== '') {
+            $products->where('highest_price', '<=', (float) $maxPrice);
+        }
+
+        if (!empty($selectedAttributeValueIds)) {
+            $attributeGroups = AttributeValue::query()
+                ->whereIn('id', $selectedAttributeValueIds)
+                ->get(['id', 'attribute_id'])
+                ->groupBy('attribute_id');
+
+            foreach ($attributeGroups as $attributeId => $attributeValues) {
+                $valueIds = $attributeValues->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+
+                $products->where(function ($attributeQuery) use ($attributeId, $valueIds) {
+                    $attributeQuery
+                        ->whereHas('attribute_values', function ($query) use ($attributeId, $valueIds) {
+                            $query->where('attribute_id', $attributeId)->whereIn('attribute_value_id', $valueIds);
+                        })
+                        ->orWhereHas('variation_combinations', function ($query) use ($attributeId, $valueIds) {
+                            $query->where('attribute_id', $attributeId)->whereIn('attribute_value_id', $valueIds);
+                        });
+                });
+            }
+        }
+    }
+
+    private function applyProductSorting($products, $sortBy): void
+    {
+        switch ($sortBy) {
+            case 'latest':
+                $products->orderBy('created_at', 'desc');
+                break;
+            case 'oldest':
+                $products->orderBy('created_at', 'asc');
+                break;
+            case 'highest_price':
+                $products->orderBy('highest_price', 'desc');
+                break;
+            case 'lowest_price':
+                $products->orderBy('lowest_price', 'asc');
+                break;
+            default:
+                $products->orderBy('num_of_sale', 'desc');
+                break;
+        }
+    }
+
+    private function buildTodayDealFilters(): array
+    {
+        $baseQuery = Product::query()->todayDeal()->frontendVisible();
+        $productIds = $baseQuery->pluck('id');
+
+        if ($productIds->isEmpty()) {
+            return [
+                'categories' => [],
+                'colors' => [],
+                'sizes' => [],
+                'materials' => [],
+                'attributes' => [],
+                'priceRange' => [
+                    'min' => 0,
+                    'max' => 0,
+                ],
+            ];
+        }
+
+        $categories = Category::query()
+            ->select('categories.*')
+            ->join('product_categories', 'product_categories.category_id', '=', 'categories.id')
+            ->whereIn('product_categories.product_id', $productIds)
+            ->distinct()
+            ->orderBy('categories.name')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => (int) $category->id,
+                    'name' => $category->getTranslation('name'),
+                    'slug' => $category->slug,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $attributeFilters = $this->collectTodayDealAttributeFilters($productIds);
+        $groupedFilters = $this->groupTodayDealAttributeFilters($attributeFilters);
+
+        $priceRange = Product::query()
+            ->todayDeal()
+            ->frontendVisible()
+            ->selectRaw('MIN(lowest_price) AS min_price, MAX(highest_price) AS max_price')
+            ->first();
+
+        return [
+            'categories' => $categories,
+            'colors' => $groupedFilters['colors'],
+            'sizes' => $groupedFilters['sizes'],
+            'materials' => $groupedFilters['materials'],
+            'attributes' => $groupedFilters['attributes'],
+            'priceRange' => [
+                'min' => (float) ($priceRange->min_price ?? 0),
+                'max' => (float) ($priceRange->max_price ?? 0),
+            ],
+        ];
+    }
+
+    private function collectTodayDealAttributeFilters(Collection $productIds): Collection
+    {
+        $directAttributeValues = ProductAttributeValue::query()
+            ->with(['attribute', 'value'])
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->map(function ($item) {
+                if (!$item->attribute || !$item->value) {
+                    return null;
+                }
+
+                return [
+                    'attribute_id' => (int) $item->attribute_id,
+                    'attribute_name' => $item->attribute->getTranslation('name'),
+                    'value_id' => (int) $item->attribute_value_id,
+                    'value_name' => $item->value->getTranslation('name'),
+                ];
+            })
+            ->filter();
+
+        $variationAttributeValues = ProductVariationCombination::query()
+            ->with(['attribute', 'attribute_value'])
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->map(function ($item) {
+                if (!$item->attribute || !$item->attribute_value) {
+                    return null;
+                }
+
+                return [
+                    'attribute_id' => (int) $item->attribute_id,
+                    'attribute_name' => $item->attribute->getTranslation('name'),
+                    'value_id' => (int) $item->attribute_value_id,
+                    'value_name' => $item->attribute_value->getTranslation('name'),
+                ];
+            })
+            ->filter();
+
+        return $directAttributeValues
+            ->merge($variationAttributeValues)
+            ->unique(fn ($item) => $item['attribute_id'] . ':' . $item['value_id'])
+            ->values();
+    }
+
+    private function groupTodayDealAttributeFilters(Collection $attributeFilters): array
+    {
+        $grouped = [
+            'colors' => [],
+            'sizes' => [],
+            'materials' => [],
+            'attributes' => [],
+        ];
+
+        $attributeFilters
+            ->groupBy('attribute_id')
+            ->each(function (Collection $items) use (&$grouped) {
+                $first = $items->first();
+                $attributeName = $first['attribute_name'] ?? '';
+                $normalizedName = str($attributeName)->lower()->replace(['_', '-'], ' ')->squish()->value();
+                $values = $items
+                    ->sortBy('value_name')
+                    ->values()
+                    ->map(function ($item) {
+                        return [
+                            'id' => (int) $item['value_id'],
+                            'name' => $item['value_name'],
+                        ];
+                    })
+                    ->all();
+
+                if (in_array($normalizedName, ['color', 'colors'], true)) {
+                    $grouped['colors'] = $values;
+                    return;
+                }
+
+                if (str_contains($normalizedName, 'size')) {
+                    $grouped['sizes'] = $values;
+                    return;
+                }
+
+                if (str_contains($normalizedName, 'material') || str_contains($normalizedName, 'fabric')) {
+                    $grouped['materials'] = $values;
+                    return;
+                }
+
+                $grouped['attributes'][] = [
+                    'id' => (int) $first['attribute_id'],
+                    'name' => $attributeName,
+                    'values' => $values,
+                ];
+            });
+
+        return $grouped;
     }
 
     private function latestProductVisibilitySnapshot(): array

@@ -73,7 +73,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function shop()
     {
-        return $this->hasOne(Shop::class,'id','shop_id');
+        return $this->belongsTo(Shop::class, 'shop_id');
     }
 
     public function followed_shops()

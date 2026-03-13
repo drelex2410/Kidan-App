@@ -126,6 +126,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'admin']], function 
         Route::get('/duplicate/{id}', [ProductController::class, 'duplicate'])->name('product.duplicate');
         Route::post('/update/{id}', [ProductController::class, 'update'])->name('product.update');
         Route::post('/published', [ProductController::class, 'updatePublished'])->name('product.published');
+        Route::post('/today-deal', [ProductController::class, 'updateTodayDeal'])->name('product.today_deal');
         Route::get('/destroy/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
         Route::post('/bulk-product-delete', [ProductController::class, 'bulk_product_delete'])->name('bulk-product-delete');
 
