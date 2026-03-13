@@ -20,6 +20,7 @@
             <tr>
                 <th>#</th>
                 <th>{{translate('Name')}}</th>
+                <th>{{translate('Status')}}</th>
                 <th data-breakpoints="md">{{translate('URL')}}</th>
                 <th class="text-right">{{translate('Actions')}}</th>
             </tr>
@@ -29,9 +30,18 @@
         	<tr>
         		<td>{{ $key+1 }}</td>
         		<td>{{ $page->getTranslation('title') }}</td>
+                <td>
+                    @if(!isset($page->is_published) || $page->is_published)
+                        <span class="badge badge-inline badge-success">{{ translate('Published') }}</span>
+                    @else
+                        <span class="badge badge-inline badge-secondary">{{ translate('Draft') }}</span>
+                    @endif
+                </td>
         		<td>
 					@if($page->type == 'home_page')
 						{{ route('home') }}
+                    @elseif($page->slug == 'about-us')
+                        {{ route('home') }}/about
 					@else
 						{{ route('home') }}/page/{{ $page->slug }}
 					@endif

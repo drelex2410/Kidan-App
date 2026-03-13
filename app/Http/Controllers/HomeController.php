@@ -14,6 +14,7 @@ use App\Models\Page;
 use App\Models\Product;
 use Cache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Route;
 
 class HomeController extends Controller
@@ -51,7 +52,15 @@ class HomeController extends Controller
                 $meta['meta_keywords'] = $blog->meta_keywords ? $blog->meta_keywords : $meta['meta_keywords'];
             }
         } elseif ($slug) {
-            $page = Page::where('slug', $slug)->first();
+            $pageSlug = $slug;
+
+            if (Str::startsWith($pageSlug, 'page/')) {
+                $pageSlug = Str::after($pageSlug, 'page/');
+            } elseif ($pageSlug === 'about') {
+                $pageSlug = 'about-us';
+            }
+
+            $page = Page::published()->where('slug', $pageSlug)->first();
             if ($page) {
                 $meta['meta_title'] = $page->meta_title ? $page->meta_title : $meta['meta_title'];
                 $meta['meta_description'] = $page->meta_description ? $page->meta_description : $meta['meta_description'];

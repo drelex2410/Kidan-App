@@ -19,7 +19,7 @@ class SiteMapController extends Controller
         $categories = Category::all();
         $brands = Brand::all();
         $blogs = Blog::all();
-        $pages = Page::where('type','!=', 'home_page')->get();
+        $pages = Page::published()->where('type','!=', 'home_page')->get();
         $offers = Offer::all();
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>';
@@ -107,8 +107,9 @@ class SiteMapController extends Controller
         }
 
         foreach ($pages as $page) {
+            $pagePath = $page->slug === 'about-us' ? '/about' : '/page/' . $page->slug;
             $xml .= '<url>
-                        <loc>' . env('APP_URL') . '/page' . '/' . $page->slug . '</loc>
+                        <loc>' . env('APP_URL') . $pagePath . '</loc>
                         <priority>0.9</priority>
                         <lastmod>' . $page->updated_at->format('Y-m-d') . '</lastmod>
                     </url> ';

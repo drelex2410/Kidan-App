@@ -9,11 +9,12 @@ class PageController extends Controller
 {
     public function show($slug)
     {
-        $page = new CustomPageResource(Page::where('slug', $slug)->first());
+        $page = Page::with('visibleSections')->published()->where('slug', $slug)->first();
+
         if ($page) {
             return response()->json([
                 'success' => true,
-                'data' => $page,
+                'data' => new CustomPageResource($page),
             ]);
         } else {
             return response()->json([

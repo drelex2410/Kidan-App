@@ -1,6 +1,4 @@
-
 let Layout = () => import("../components/static/Layout.vue");
-let About = () => import("../components/static/About.vue");
 let Career = () => import("../components/static/Career.vue");
 let Tribe = () => import("../components/static/Tribe.vue");
 let PartnerShip = () => import("../components/static/PartnerShip.vue");
@@ -11,8 +9,15 @@ let Terms = () => import("../components/static/Terms.vue");
 let Return = () => import("../components/static/Return.vue");
 let Shipping = () => import("../components/static/Shipping.vue");
 let FAQ = () => import("../components/static/FAQ.vue");
+let CustomPage = () => import("../pages/CustomPage.vue");
 
 export default [
+    {
+        path: "/about",
+        component: CustomPage,
+        name: "About",
+        meta: { requiresAuth: false, pageSlugOverride: "about-us" },
+    },
     {
         path: "/privacy",
         component: Privacy,
@@ -47,12 +52,6 @@ export default [
         path: "/",
         component: Layout,
         children: [
-            {
-                path: "about",
-                component: About,
-                name: "About",
-                meta: { requiresAuth: false },
-            },
             {
                 path: "career",
                 component: Career,

@@ -17,97 +17,40 @@
 					<span>{{$language->name}}</span>
 				</a>
 			</li>
-		@endforeach
-	</ul>
-	<form class="p-4" action="{{ route('custom-pages.update', $page->id) }}" method="POST" enctype="multipart/form-data">
-		@csrf
-		<input type="hidden" name="_method" value="PATCH">
-		<input type="hidden" name="lang" value="{{ $lang }}">
+			@endforeach
+		</ul>
+		<form class="p-4" action="{{ route('custom-pages.update', $page->id) }}" method="POST" enctype="multipart/form-data">
+			@csrf
+			<input type="hidden" name="_method" value="PATCH">
+			<input type="hidden" name="lang" value="{{ $lang }}">
+			@php
+				$sectionsForBuilder = old('sections', ($page->sections ?? collect())->map(function ($section) {
+					return [
+						'type' => $section->type,
+						'title' => $section->title,
+						'subtitle' => $section->subtitle,
+						'content' => $section->content,
+						'button_text' => $section->button_text,
+						'button_link' => $section->button_link,
+						'image' => $section->image,
+						'image_2' => $section->image_2,
+						'sort_order' => $section->sort_order,
+						'is_visible' => $section->is_visible,
+						'settings' => $section->settings_json ?? [],
+					];
+				})->values()->toArray());
+			@endphp
 
-		<div class="card-header px-0">
-			<h6 class="fw-600 mb-0">{{ translate('Page Content') }}</h6>
-		</div>
-		<div class="card-body px-0">
-				<div class="form-group row">
-					<label class="col-sm-2 col-from-label" for="name">{{translate('Title')}} <span class="text-danger">* <i class="las la-language" title="{{translate('Translatable')}}"></i></span></label>
-					<div class="col-sm-10">
-						<input type="text" class="form-control" placeholder="Title" name="title" value="{{ $page->getTranslation('title', $lang) }}" required>
-					</div>
-				</div>
-
-				<div class="form-group row">
-					<label class="col-sm-2 col-from-label" for="name">{{translate('Link')}} <span class="text-danger">*</span></label>
-					<div class="col-sm-10">
-						<div class="input-group">
-							@if($page->type == 'custom_page')
-								<div class="input-group-prepend"><span class="input-group-text">{{ route('home') }}/page/</span></div>
-								<input type="text" class="form-control" placeholder="{{ translate('Slug') }}" name="slug" value="{{ $page->slug }}">
-							@else
-								<input class="form-control" value="{{ route('home') }}/page/{{ $page->slug }}" disabled>
-							@endif
-						</div>
-						<small class="form-text text-muted">{{ translate('Use character, number, hypen only') }}</small>
-					</div>
-				</div>
-
-			<div class="form-group row">
-				<label class="col-sm-2 col-from-label" for="name">{{translate('Add Content')}} <span class="text-danger">* <i class="las la-language" title="{{translate('Translatable')}}"></i></span></label>
-				<div class="col-sm-10">
-					<textarea class="aiz-text-editor form-control" placeholder="Content.." data-min-height="300" name="content" required>
-						@php
-							echo $page->getTranslation('content', $lang);
-						@endphp
-					</textarea>
-				</div>
-			</div>
-		</div>
-
-		<div class="card-header">
-			<h6 class="fw-600 mb-0">{{ translate('Seo Fields') }}</h6>
-		</div>
-		<div class="card-body">
-
-			<div class="form-group row">
-					<label class="col-sm-2 col-from-label" for="name">{{translate('Meta Title')}}</label>
-					<div class="col-sm-10">
-						<input type="text" class="form-control" placeholder="Title" name="meta_title" value="{{ $page->meta_title }}">
-					</div>
-			</div>
-
-			<div class="form-group row">
-					<label class="col-sm-2 col-from-label" for="name">{{translate('Meta Description')}}</label>
-					<div class="col-sm-10">
-						<textarea class="resize-off form-control" placeholder="Description" name="meta_description">{!! $page->meta_description !!}</textarea>
-					</div>
-			</div>
-
-			<div class="form-group row">
-					<label class="col-sm-2 col-from-label" for="name">{{translate('Keywords')}}</label>
-					<div class="col-sm-10">
-						<textarea class="resize-off form-control" placeholder="Keyword, Keyword" name="keywords">{!! $page->keywords !!}</textarea>
-						<small class="text-muted">{{ translate('Separate with coma') }}</small>
-					</div>
-			</div>
-
-			<div class="form-group row">
-					<label class="col-sm-2 col-from-label" for="name">{{translate('Meta Image')}}</label>
-					<div class="col-sm-10">
-						<div class="input-group " data-toggle="aizuploader" data-type="image">
-								<div class="input-group-prepend">
-										<div class="input-group-text bg-soft-secondary font-weight-medium">{{ translate('Browse') }}</div>
-								</div>
-								<div class="form-control file-amount">{{ translate('Choose File') }}</div>
-								<input type="hidden" name="meta_image" class="selected-files" value="{{ $page->meta_image }}">
-						</div>
-						<div class="file-preview">
-						</div>
-					</div>
-			</div>
-
-			<div class="text-right">
-				<button type="submit" class="btn btn-primary">{{ translate('Update Page') }}</button>
-			</div>
-		</div>
-	</form>
+			@include('backend.website_settings.pages._section_builder', [
+				'page' => $page,
+				'lang' => $lang,
+				'sectionsForBuilder' => $sectionsForBuilder,
+				'submitLabel' => translate('Update Page')
+			])
+		</form>
 </div>
+@endsection
+
+@section('script')
+	@stack('page_builder_scripts')
 @endsection
