@@ -40,6 +40,22 @@
                     <span class="fw-500 fs-13 ml-2 mr-0 opacity-60">{{ translate('Browse Website') }}</span>
                 </a>
             </div>
+            <div class="aiz-topbar-item align-items-center ml-3">
+                <div class="admin-product-search" data-admin-product-search>
+                    <form class="admin-product-search__form" autocomplete="off">
+                        <input
+                            type="search"
+                            class="form-control admin-product-search__input"
+                            placeholder="{{ translate('Search products') }}"
+                            aria-label="{{ translate('Search products') }}"
+                        >
+                        <button type="submit" class="btn btn-outline-secondary border-gray-300 admin-product-search__button">
+                            <i class="las la-search opacity-60"></i>
+                        </button>
+                    </form>
+                    <div class="admin-product-search__results d-none"></div>
+                </div>
+            </div>
             <div class="aiz-topbar-item align-items-center dropdown ml-3 mr-0 ">
                 <a class="btn btn-outline-secondary border-gray-300 d-flex align-items-center px-3"
                     href="javascript:void(0);" data-toggle="dropdown">
@@ -69,6 +85,22 @@
             </div>
         </div>
         <div class="d-flex justify-content-around align-items-center align-items-stretch">
+            <div class="aiz-topbar-item ml-2 d-md-none">
+                <div class="admin-product-search admin-product-search--mobile" data-admin-product-search>
+                    <form class="admin-product-search__form" autocomplete="off">
+                        <input
+                            type="search"
+                            class="form-control admin-product-search__input"
+                            placeholder="{{ translate('Search products') }}"
+                            aria-label="{{ translate('Search products') }}"
+                        >
+                        <button type="submit" class="btn btn-outline-secondary border-gray-300 admin-product-search__button">
+                            <i class="las la-search opacity-60"></i>
+                        </button>
+                    </form>
+                    <div class="admin-product-search__results d-none"></div>
+                </div>
+            </div>
 
 
             <div class="aiz-topbar-item ml-2">
@@ -200,3 +232,251 @@
         </div>
     </div>
 </div><!-- .aiz-topbar -->
+
+<style>
+    .admin-product-search {
+        position: relative;
+        width: min(360px, 38vw);
+    }
+
+    .admin-product-search--mobile {
+        width: min(240px, 70vw);
+    }
+
+    .admin-product-search__form {
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .admin-product-search__input {
+        min-width: 0;
+    }
+
+    .admin-product-search__button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+    }
+
+    .admin-product-search__results {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 1080;
+        background: #fff;
+        border: 1px solid #e3ebf6;
+        border-radius: 12px;
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+    }
+
+    .admin-product-search__status,
+    .admin-product-search__empty,
+    .admin-product-search__item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+    }
+
+    .admin-product-search__status,
+    .admin-product-search__empty {
+        color: #6c757d;
+        font-size: 13px;
+    }
+
+    .admin-product-search__item {
+        color: inherit;
+        text-decoration: none;
+        transition: background-color 0.15s ease;
+    }
+
+    .admin-product-search__item:hover {
+        background: #f8fafc;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .admin-product-search__thumb {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: #f1f5f9;
+    }
+
+    .admin-product-search__meta {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .admin-product-search__title,
+    .admin-product-search__sub,
+    .admin-product-search__categories {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .admin-product-search__title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .admin-product-search__sub,
+    .admin-product-search__categories {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    @media (max-width: 767.98px) {
+        .admin-product-search__results {
+            right: auto;
+            width: min(320px, 80vw);
+        }
+    }
+</style>
+
+<script>
+    (function () {
+        var endpoint = @json(route('product.search'));
+        var placeholderImage = @json(static_asset('assets/img/placeholder.jpg'));
+        var activeRequest = null;
+        var activeSequence = 0;
+
+        function escapeHtml(value) {
+            return $('<div>').text(value ?? '').html();
+        }
+
+        function renderResults(container, state, items) {
+            if (state === 'hidden') {
+                container.addClass('d-none').empty();
+                return;
+            }
+
+            container.removeClass('d-none');
+
+            if (state === 'loading') {
+                container.html('<div class="admin-product-search__status">{{ translate('Searching products...') }}</div>');
+                return;
+            }
+
+            if (!items.length) {
+                container.html('<div class="admin-product-search__empty">{{ translate('No products found') }}</div>');
+                return;
+            }
+
+            container.html(items.map(function (item) {
+                var categories = (item.category_names || []).join(', ');
+                var sku = item.sku ? 'SKU: ' + item.sku : item.slug;
+                return '' +
+                    '<a class="admin-product-search__item" href="' + escapeHtml(item.edit_url) + '">' +
+                        '<img class="admin-product-search__thumb" src="' + escapeHtml(item.thumbnail_url || placeholderImage) + '" alt="' + escapeHtml(item.name) + '" onerror="this.onerror=null;this.src=\'' + escapeHtml(placeholderImage) + '\';">' +
+                        '<span class="admin-product-search__meta">' +
+                            '<span class="admin-product-search__title">' + escapeHtml(item.name) + '</span>' +
+                            '<span class="admin-product-search__sub">' + escapeHtml(sku) + '</span>' +
+                            '<span class="admin-product-search__categories">' + escapeHtml(categories || '{{ translate('Uncategorized') }}') + '</span>' +
+                        '</span>' +
+                    '</a>';
+            }).join(''));
+        }
+
+        function bindSearch(root) {
+            var form = root.find('.admin-product-search__form');
+            var input = root.find('.admin-product-search__input');
+            var results = root.find('.admin-product-search__results');
+            var debounceTimer = null;
+
+            function clearResults() {
+                if (activeRequest && activeRequest.readyState !== 4) {
+                    activeRequest.abort();
+                }
+                activeSequence += 1;
+                renderResults(results, 'hidden', []);
+            }
+
+            function performSearch() {
+                var query = $.trim(input.val());
+
+                if (!query.length) {
+                    clearResults();
+                    return;
+                }
+
+                if (activeRequest && activeRequest.readyState !== 4) {
+                    activeRequest.abort();
+                }
+
+                var requestId = ++activeSequence;
+                renderResults(results, 'loading', []);
+
+                activeRequest = $.ajax({
+                    url: endpoint,
+                    method: 'GET',
+                    dataType: 'json',
+                    data: { q: query }
+                }).done(function (response) {
+                    if (requestId !== activeSequence) {
+                        return;
+                    }
+
+                    renderResults(results, 'results', response.data || []);
+                }).fail(function (xhr, status) {
+                    if (status === 'abort' || requestId !== activeSequence) {
+                        return;
+                    }
+
+                    renderResults(results, 'results', []);
+                });
+            }
+
+            input.on('input', function () {
+                clearTimeout(debounceTimer);
+
+                if (!$.trim(input.val()).length) {
+                    clearResults();
+                    return;
+                }
+
+                debounceTimer = setTimeout(performSearch, 250);
+            });
+
+            form.on('submit', function (event) {
+                event.preventDefault();
+                clearTimeout(debounceTimer);
+                performSearch();
+            });
+
+            root.find('.admin-product-search__button').on('click', function (event) {
+                event.preventDefault();
+                clearTimeout(debounceTimer);
+                performSearch();
+            });
+
+            input.on('focus', function () {
+                if (results.children().length) {
+                    results.removeClass('d-none');
+                }
+            });
+
+            $(document).on('click', function (event) {
+                if (!root.is(event.target) && root.has(event.target).length === 0) {
+                    results.addClass('d-none');
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            $('[data-admin-product-search]').each(function () {
+                bindSearch($(this));
+            });
+        });
+    })();
+</script>

@@ -40,11 +40,17 @@ const router = createRouter({
     routes: routes,
 });
 
-router.beforeEach((to, from, next) => {
+const finishRouterLoading = () => {
+    store.commit("app/setRouterLoading", false);
+};
+
+router.beforeEach(async (to, from) => {
     if (from.name == "ConversationsDetails") {
         clearInterval(window.intervalCall);
     }
+
     store.commit("app/setRouterLoading", true);
+
     if (to.query.social_login == "failed") {
         store.commit("auth/setSociaLoginStatus", "failed");
     } else if (to.query.access_token) {
@@ -61,33 +67,49 @@ router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
     const isAuthenticated = store.getters["auth/isAuthenticated"];
 
-    loadLanguageAsync(locale).then(function () {
-        if (requiresAuth && !isAuthenticated) {
-            router
-                .push({
-                    name: "Login",
-                    query: { redirect: to.fullPath },
-                })
-                .catch((e) => {
-                    if (from.name == "Login") {
-                        store.commit("auth/updateCartDrawer", false);
-                        store.commit("auth/updateMobileSideMenu", false);
-                    }
-                });
-        } else if (
-            (to.name == "Login" ||
-                to.name == "Registration" ||
-                to.name == "ForgotPassword") &&
-            isAuthenticated
-        ) {
-            // router.push({ name: "DeliveryBoyDashboard" });
-            router.push({ name: "DashBoard" });
-        } else {
-            next();
+    try {
+        await loadLanguageAsync(locale);
+    } catch (error) {
+        store.dispatch("app/removeLanguage");
+
+        const fallbackLocale = store.getters["app/userLanguage"];
+        try {
+            await loadLanguageAsync(fallbackLocale);
+        } catch (fallbackError) {
+            // Allow navigation to continue even if locale hydration fails.
         }
-    });
+    }
+
+    if (requiresAuth && !isAuthenticated) {
+        if (from.name == "Login") {
+            store.commit("auth/updateCartDrawer", false);
+            store.commit("auth/updateMobileSideMenu", false);
+        }
+
+        return {
+            name: "Login",
+            query: { redirect: to.fullPath },
+        };
+    }
+
+    if (
+        (to.name == "Login" ||
+            to.name == "Registration" ||
+            to.name == "ForgotPassword") &&
+        isAuthenticated
+    ) {
+        return { name: "DashBoard" };
+    }
+
+    return true;
 });
-router.afterEach((to, from) => {
-    store.commit("app/setRouterLoading", false);
+
+router.afterEach(() => {
+    finishRouterLoading();
 });
+
+router.onError(() => {
+    finishRouterLoading();
+});
+
 export default router;

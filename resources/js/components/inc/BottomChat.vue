@@ -131,6 +131,7 @@ export default {
   data: () => ({
     sending: false,
     messages: [],
+    pollingTimerId: null,
     chat: {
       message: "",
     },
@@ -158,6 +159,7 @@ export default {
     },
     closeChatWindow() {
       this.updateChatWindow(false);
+      this.stopMessagePolling();
     },
     async sendMessage() {
       this.sending = true;
@@ -190,7 +192,11 @@ export default {
       }, 100);
     },
     getNewMessages() {
-      setInterval(async () => {
+      if (this.pollingTimerId) {
+        return;
+      }
+
+      this.pollingTimerId = setInterval(async () => {
         const res = await this.call_api("get", "user/chats/new-messages");
         if (res.data.success && res.data.data.data.length > 0) {
           this.messages = [...this.messages, ...res.data.data.data];
@@ -198,12 +204,21 @@ export default {
         }
       }, 5000);
     },
+    stopMessagePolling() {
+      if (this.pollingTimerId) {
+        clearInterval(this.pollingTimerId);
+        this.pollingTimerId = null;
+      }
+    },
   },
   created() {
     if (this.isAuthenticated && this.chatWindowOpen) {
       this.getOldChats();
       this.getNewMessages();
     }
+  },
+  beforeUnmount() {
+    this.stopMessagePolling();
   },
 };
 </script>

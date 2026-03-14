@@ -7,7 +7,6 @@ use Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Response;
-use Storage;
 
 class AizUploadController extends Controller
 {
@@ -168,7 +167,7 @@ class AizUploadController extends Controller
                     }
                 }
 
-                $upload->file_name = $request->file('aiz_file')->store('uploads/all');
+                $upload->file_name = $request->file('aiz_file')->store('uploads/all', config('filesystems.default'));
                 $upload->user_id = Auth::user()->id;
 
                 $upload->type = $type[$upload->extension];
@@ -241,14 +240,7 @@ class AizUploadController extends Controller
             return back();
         }
         try {
-            if (env('FILESYSTEM_DRIVER') == 's3') {
-                Storage::disk('s3')->delete($upload->file_name);
-                if (file_exists(public_path() . '/' . $upload->file_name)) {
-                    unlink(public_path() . '/' . $upload->file_name);
-                }
-            } else {
-                unlink(public_path() . '/' . $upload->file_name);
-            }
+            $upload->deleteStoredFile();
             $upload->delete();
             flash(translate('File deleted successfully'))->success();
         } catch (\Exception $e) {
@@ -270,7 +262,14 @@ class AizUploadController extends Controller
     {
         $project_attachment = Upload::find($id);
         try {
-            $file_path = public_path($project_attachment->file_name);
+            if ($project_attachment && ($project_attachment->download_url && filter_var($project_attachment->download_url, FILTER_VALIDATE_URL)) && (config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3')) {
+                return redirect()->away($project_attachment->download_url);
+            }
+
+            $file_path = $project_attachment?->absolutePath();
+            if (!$file_path || !file_exists($file_path)) {
+                throw new \RuntimeException('File path is not accessible.');
+            }
             return Response::download($file_path);
         } catch (\Exception $e) {
             flash('File does not exist!')->error();

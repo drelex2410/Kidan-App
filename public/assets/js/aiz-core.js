@@ -396,15 +396,14 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 if (data.length > 0) {
                     for (var i = 0; i < data.length; i++) {
                         var thumb = "";
-                        var hidden = "";
-                        if (data[i].type === "image") {
+                        var previewUrl = data[i].preview_url || (AIZ.data.fileBaseUrl + data[i].file_name);
+                        if (data[i].is_previewable) {
                             thumb =
                                 '<img src="' +
-                                AIZ.data.fileBaseUrl +
-                                data[i].file_name +
-                                '" class="img-fit">';
+                                previewUrl +
+                                '" class="img-fit" onerror="this.onerror=null;this.parentNode.innerHTML=\'<i class=&quot;' + (data[i].file_icon_class || "la la-file-text") + '&quot;></i>\';">';
                         } else {
-                            thumb = '<i class="la la-file-text"></i>';
+                            thumb = '<i class="' + (data[i].file_icon_class || "la la-file-text") + '"></i>';
                         }
                         var html =
                             '<div class="aiz-file-box-wrap" aria-hidden="' +
@@ -492,14 +491,14 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                 i++
                             ) {
                                 var thumb = "";
-                                if (data[i].type === "image") {
+                                var previewUrl = data[i].preview_url || (AIZ.data.fileBaseUrl + data[i].file_name);
+                                if (data[i].is_previewable) {
                                     thumb =
                                         '<img src="' +
-                                        AIZ.data.fileBaseUrl +
-                                        data[i].file_name +
-                                        '" class="img-fit">';
+                                        previewUrl +
+                                        '" class="img-fit" onerror="this.onerror=null;this.parentNode.innerHTML=\'<i class=&quot;' + (data[i].file_icon_class || "la la-file-text") + '&quot;></i>\';">';
                                 } else {
-                                    thumb = '<i class="la la-file-text"></i>';
+                                    thumb = '<i class="' + (data[i].file_icon_class || "la la-file-text") + '"></i>';
                                 }
                                 var html =
                                     '<div class="d-flex justify-content-between align-items-center mt-2 file-preview-item" data-id="' +
@@ -618,11 +617,14 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                     );
                     var thumb = "";
                     if (AIZ.uploader.data.allFiles[index].type === "image") {
+                        var previewUrl =
+                            AIZ.uploader.data.allFiles[index].preview_url ||
+                            (AIZ.data.fileBaseUrl +
+                                AIZ.uploader.data.allFiles[index].file_name);
                         thumb =
                             '<img src="' +
-                            AIZ.data.fileBaseUrl +
-                            AIZ.uploader.data.allFiles[index].file_name +
-                            '">';
+                            previewUrl +
+                            '" onerror="this.onerror=null;this.remove();">';
                         elem[0].insertHTML(thumb);
                         // console.log(elem);
                     }
@@ -774,14 +776,14 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                     i++
                                 ) {
                                     var thumb = "";
-                                    if (data[i].type === "image") {
+                                    var previewUrl = data[i].preview_url || (AIZ.data.fileBaseUrl + data[i].file_name);
+                                    if (data[i].is_previewable) {
                                         thumb =
                                             '<img src="' +
-                                            AIZ.data.fileBaseUrl +
-                                            data[i].file_name +
-                                            '" class="img-fit">';
+                                            previewUrl +
+                                            '" class="img-fit" onerror="this.onerror=null;this.parentNode.innerHTML=\'<i class=&quot;' + (data[i].file_icon_class || "la la-file-text") + '&quot;></i>\';">';
                                     } else {
-                                        thumb = '<i class="la la-file-text"></i>';
+                                        thumb = '<i class="' + (data[i].file_icon_class || "la la-file-text") + '"></i>';
                                     }
                                     var html =
                                         '<div class="d-flex justify-content-between align-items-center mt-2 file-preview-item" data-id="' +

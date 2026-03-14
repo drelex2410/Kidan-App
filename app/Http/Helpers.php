@@ -12,6 +12,7 @@ use App\Models\Translation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 use function GuzzleHttp\json_decode;
 
@@ -701,7 +702,7 @@ if (!function_exists('api_asset')) {
     function api_asset($id)
     {
         if (($asset = \App\Models\Upload::find($id)) != null) {
-            return my_asset($asset->file_name);
+            return $asset->preview_url;
         }
         return "";
     }
@@ -712,9 +713,39 @@ if (!function_exists('uploaded_asset')) {
     function uploaded_asset($id)
     {
         if (($asset = \App\Models\Upload::find($id)) != null) {
-            return my_asset($asset->file_name);
+            return $asset->preview_url;
         }
         return null;
+    }
+}
+
+if (!function_exists('normalize_file_path')) {
+    function normalize_file_path($path)
+    {
+        if (blank($path)) {
+            return null;
+        }
+
+        $path = trim(str_replace('\\', '/', $path));
+
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        $path = ltrim($path, '/');
+
+        foreach ([
+            'public/',
+            'storage/app/public/',
+            'app/public/',
+        ] as $prefix) {
+            if (Str::startsWith($path, $prefix)) {
+                $path = Str::after($path, $prefix);
+                break;
+            }
+        }
+
+        return ltrim($path, '/');
     }
 }
 
@@ -728,12 +759,21 @@ if (!function_exists('my_asset')) {
      */
     function my_asset($path, $secure = null)
     {
-        if (env('FILESYSTEM_DRIVER') == 's3') {
-            return Storage::disk('s3')->url($path);
-        } else {
-            // return app('url')->asset('public/' . $path, $secure);
-            return app('url')->asset( $path, $secure);
+        $path = normalize_file_path($path);
+
+        if (blank($path)) {
+            return null;
         }
+
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        if (config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3') {
+            return Storage::disk('s3')->url($path);
+        }
+
+        return app('url')->asset($path, $secure);
     }
 }
 
@@ -770,10 +810,10 @@ if (!function_exists('getBaseURL')) {
 if (!function_exists('getFileBaseURL')) {
     function getFileBaseURL()
     {
-        if (env('FILESYSTEM_DRIVER') == 's3') {
+        if (config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3') {
             return env('AWS_URL') . '/';
         } else {
-            return getBaseURL() . '/public/';
+            return rtrim(app('url')->asset(''), '/') . '/';
         }
     }
 }

@@ -112,6 +112,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'admin']], function 
 
 
     // Product
+    Route::get('/product/search', [ProductController::class, 'adminSearch'])->name('product.search');
     Route::resource('/product', ProductController::class);
     Route::group(['prefix' => 'product'], function () {
         Route::post('/new-attribte', [ProductController::class, 'new_attribute'])->name('product.new_attribute');

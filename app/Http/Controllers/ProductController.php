@@ -67,6 +67,81 @@ class ProductController extends Controller
         return view('backend.product.products.index', compact('products', 'type', 'col_name', 'query', 'sort_search'));
     }
 
+    public function adminSearch(Request $request)
+    {
+        $keyword = trim((string) $request->query('q', ''));
+
+        if ($keyword === '') {
+            return response()->json([
+                'success' => true,
+                'query' => '',
+                'data' => [],
+            ]);
+        }
+
+        $needle = '%' . Str::lower($keyword) . '%';
+
+        $products = Product::query()
+            ->with([
+                'categories:id,name',
+                'variations:id,product_id,sku',
+            ])
+            ->when(auth()->user()->shop_id, function ($query) {
+                $query->where('shop_id', auth()->user()->shop_id);
+            })
+            ->where(function ($query) use ($needle) {
+                $query->whereRaw('LOWER(name) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(slug) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(description) LIKE ?', [$needle])
+                    ->orWhereHas('product_translations', function ($translationQuery) use ($needle) {
+                        $translationQuery
+                            ->whereRaw('LOWER(name) LIKE ?', [$needle])
+                            ->orWhereRaw('LOWER(description) LIKE ?', [$needle]);
+                    })
+                    ->orWhereHas('variations', function ($variationQuery) use ($needle) {
+                        $variationQuery->whereRaw('LOWER(sku) LIKE ?', [$needle]);
+                    })
+                    ->orWhereHas('categories', function ($categoryQuery) use ($needle) {
+                        $categoryQuery
+                            ->whereRaw('LOWER(name) LIKE ?', [$needle])
+                            ->orWhereHas('category_translations', function ($translationQuery) use ($needle) {
+                                $translationQuery->whereRaw('LOWER(name) LIKE ?', [$needle]);
+                            });
+                    });
+            })
+            ->orderByRaw(
+                "CASE
+                    WHEN LOWER(name) LIKE ? THEN 0
+                    WHEN LOWER(slug) LIKE ? THEN 1
+                    ELSE 2
+                END",
+                [Str::lower($keyword) . '%', Str::lower($keyword) . '%']
+            )
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'query' => $keyword,
+            'data' => $products->map(function (Product $product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'sku' => optional($product->variations->firstWhere('sku', '!=', null))->sku,
+                    'thumbnail_url' => uploaded_asset($product->thumbnail_img) ?: static_asset('assets/img/placeholder.jpg'),
+                    'category_names' => $product->categories
+                        ->pluck('name')
+                        ->filter()
+                        ->values()
+                        ->all(),
+                    'edit_url' => route('product.edit', $product->id),
+                ];
+            })->values(),
+        ]);
+    }
+
 
     /**
      * Show the form for creating a new resource.

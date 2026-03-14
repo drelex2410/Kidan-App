@@ -165,7 +165,7 @@ export default {
       "routerLoading",
     ]),
     isHomePage() {
-      return this.$route.name === "Home" || !this.$route.name;
+      return this.$route.name === "Home";
     },
   },
 

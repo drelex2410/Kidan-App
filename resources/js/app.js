@@ -83,5 +83,7 @@ app.use(i18n);
 app.mixin(Mixin);
 app.provide('HelperClass', HelperClass);   // or however you want to provide it
 
-// Mount the app
-app.mount("#app");
+// Wait for the initial route (including async guards/lazy pages) before first render.
+router.isReady().then(() => {
+    app.mount("#app");
+});
