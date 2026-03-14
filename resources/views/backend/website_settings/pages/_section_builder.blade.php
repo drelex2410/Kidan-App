@@ -20,7 +20,7 @@
             <div class="col-sm-10">
                 <div class="input-group">
                     @if (($page->type ?? 'custom_page') === 'custom_page')
-                        <div class="input-group-prepend"><span class="input-group-text">{{ route('home') }}/page/</span></div>
+                        <div class="input-group-prepend"><span class="input-group-text">{{ ($page->slug ?? '') === 'journal' ? route('home') . '/' : route('home') . '/page/' }}</span></div>
                         <input type="text" class="form-control" placeholder="{{ translate('Slug') }}" name="slug" value="{{ old('slug', $page->slug ?? '') }}" required>
                     @else
                         <input class="form-control" value="{{ route('home') }}/page/{{ $page->slug ?? '' }}" disabled>
@@ -29,6 +29,8 @@
                 </div>
                 @if (($page->slug ?? '') === 'about-us')
                     <small class="form-text text-muted">{{ translate('This page is served publicly from') }} `/about` {{ translate('and also remains available through the CMS page endpoint.') }}</small>
+                @elseif (($page->slug ?? '') === 'journal')
+                    <small class="form-text text-muted">{{ translate('This page is served publicly from') }} `/journal` {{ translate('and shares its frontend layout with the Journal landing experience.') }}</small>
                 @else
                     <small class="form-text text-muted">{{ translate('Use character, number, hypen only') }}</small>
                 @endif
@@ -55,7 +57,14 @@
                 <h6 class="fw-600 mb-0">{{ translate('Page Builder Sections') }}</h6>
                 <small class="text-muted">{{ translate('Build the page with reusable responsive blocks.') }}</small>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" id="add-page-section">{{ translate('Add Section') }}</button>
+            <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                id="add-page-section"
+                data-default-section-type="{{ ($page->slug ?? '') === 'journal' ? 'journal_editorial' : 'about_hero_split' }}"
+            >
+                {{ translate('Add Section') }}
+            </button>
         </div>
         <div class="card-body">
             <div id="page-sections-container">
@@ -303,6 +312,7 @@
                     cta_banner: ["title", "subtitle", "button", "image"],
                     image_gallery: ["title"],
                     spacer: [],
+                    journal_editorial: ["title", "content", "image"],
                 };
                 card.querySelector('.section-card-title').textContent = title;
 
@@ -634,6 +644,35 @@
                     </div>`;
             }
 
+            function buildJournalYoutubeRowHtml(sectionIndex, itemIndex) {
+                return `
+                    <div class="input-group mb-2 journal-youtube-row">
+                        <input
+                            type="url"
+                            class="form-control"
+                            name="sections[${sectionIndex}][settings][youtube_urls][${itemIndex}]"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                        >
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-soft-danger remove-journal-youtube-row">{{ translate('Remove') }}</button>
+                        </div>
+                    </div>`;
+            }
+
+            function toggleJournalProductSource(card) {
+                const type = card.querySelector('.journal-product-source-select')?.value || '';
+                const categoryGroup = card.querySelector('.journal-product-source-group--category');
+                const brandGroup = card.querySelector('.journal-product-source-group--brand');
+
+                if (categoryGroup) {
+                    categoryGroup.style.display = type === 'category' ? '' : 'none';
+                }
+
+                if (brandGroup) {
+                    brandGroup.style.display = type === 'brand' ? '' : 'none';
+                }
+            }
+
             function ensureDefaultTab(card) {
                 const radios = card.querySelectorAll('.tab-item input[type="radio"]');
                 if (!radios.length) {
@@ -722,6 +761,13 @@
                     });
                 }
 
+                const journalSourceSelect = card.querySelector('.journal-product-source-select');
+                if (journalSourceSelect) {
+                    journalSourceSelect.addEventListener('change', function() {
+                        toggleJournalProductSource(card);
+                    });
+                }
+
                 card.querySelector('.remove-section').addEventListener('click', function() {
                     card.remove();
                     updateSectionOrdering();
@@ -762,6 +808,26 @@
                     const removeBulletButton = event.target.closest('.remove-bullet-item');
                     if (removeBulletButton) {
                         removeBulletButton.closest('.bullet-item').remove();
+                        return;
+                    }
+
+                    const addJournalYoutubeButton = event.target.closest('.add-journal-youtube-row');
+                    if (addJournalYoutubeButton) {
+                        const wrapper = card.querySelector('.journal-youtube-url-list');
+                        const sectionIndex = card.getAttribute('data-section-index');
+                        const itemIndex = nextIndex();
+                        wrapper.insertAdjacentHTML('beforeend', buildJournalYoutubeRowHtml(sectionIndex, itemIndex));
+                        return;
+                    }
+
+                    const removeJournalYoutubeButton = event.target.closest('.remove-journal-youtube-row');
+                    if (removeJournalYoutubeButton) {
+                        const rows = card.querySelectorAll('.journal-youtube-row');
+                        if (rows.length <= 1) {
+                            removeJournalYoutubeButton.closest('.journal-youtube-row').querySelector('input').value = '';
+                        } else {
+                            removeJournalYoutubeButton.closest('.journal-youtube-row').remove();
+                        }
                         return;
                     }
 
@@ -816,6 +882,7 @@
                     refreshSectionSummary(card);
                 });
                 applySectionType(card);
+                toggleJournalProductSource(card);
                 refreshSectionSummary(card);
             }
 
@@ -844,7 +911,7 @@
                 updateSectionOrdering();
 
                 addButton.addEventListener('click', function() {
-                    createSection('about_hero_split');
+                    createSection(addButton.getAttribute('data-default-section-type') || 'about_hero_split');
                 });
             }
 

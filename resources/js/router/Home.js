@@ -9,7 +9,6 @@ let AllBrands = () => import("../pages/AllBrands.vue");
 let AllOffers = () => import("../pages/AllOffers.vue");
 let OfferDetails = () => import("../pages/OfferDetails.vue");
 let AllBlogs = () => import("../pages/AllBlogs.vue");
-let BlogDetails = () => import("../pages/BlogDetails.vue");
 let Cart = () => import("../../js/components/cart/CartPage.vue");
 let SearchOverLay =()=> import("../components/new-design-header2/SearchOverlay.vue")
 
@@ -99,6 +98,24 @@ export default [
         meta: { requiresAuth: false },
     },
     {
+        path: "/journal",
+        component: AllBlogs,
+        name: "Journal",
+        meta: { requiresAuth: false },
+    },
+    {
+        path: "/journal/category/:categorySlug?",
+        component: AllBlogs,
+        name: "JournalFilter",
+        meta: { requiresAuth: false },
+    },
+    {
+        path: "/journal/search/:searchKeyword?",
+        component: AllBlogs,
+        name: "JournalSearch",
+        meta: { requiresAuth: false },
+    },
+    {
         path: "/all-blogs/category/:categorySlug?",
         component: AllBlogs,
         name: "AllBlogsFilter",
@@ -112,7 +129,7 @@ export default [
     },
     {
         path: "/blog-details/:slug",
-        component: BlogDetails,
+        component: AllBlogs,
         name: "BlogDetails",
         meta: { requiresAuth: false },
     },

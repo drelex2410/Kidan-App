@@ -5,6 +5,10 @@
     $featureItems = $settings['items'] ?? [];
     $tabs = $settings['tabs'] ?? [];
     $bullets = $settings['bullets'] ?? [];
+    $journalYoutubeUrls = $settings['youtube_urls'] ?? [''];
+    if (empty($journalYoutubeUrls)) {
+        $journalYoutubeUrls = [''];
+    }
     $currentType = $sectionData['type'] ?? 'about_hero_split';
     $defaultTabKey = (string) ($settings['default_tab'] ?? 0);
     $collapseId = 'page-section-body-' . $index;
@@ -788,6 +792,87 @@
                             </label>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="type-panel" data-type-panel="journal_editorial">
+                <div class="alert alert-soft-info mb-3">
+                    {{ translate('This section powers the special editorial, product, and video blocks shown on the Journal landing pages (/journal and /all-blogs).') }}
+                </div>
+                <div class="form-row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>{{ translate('Product Source Type') }}</label>
+                            <select class="form-control journal-product-source-select" name="sections[{{ $index }}][settings][product_source_type]">
+                                <option value="">{{ translate('None / Random Products') }}</option>
+                                <option value="category" {{ ($settings['product_source_type'] ?? '') === 'category' ? 'selected' : '' }}>{{ translate('Category') }}</option>
+                                <option value="brand" {{ ($settings['product_source_type'] ?? '') === 'brand' ? 'selected' : '' }}>{{ translate('Brand') }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>{{ translate('Products Count') }}</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="12"
+                                class="form-control"
+                                name="sections[{{ $index }}][settings][related_products_limit]"
+                                value="{{ $settings['related_products_limit'] ?? 4 }}"
+                            >
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row journal-product-source-group journal-product-source-group--category">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label>{{ translate('Selected Category') }}</label>
+                            <select class="form-control aiz-selectpicker" name="sections[{{ $index }}][settings][product_category_id]" data-live-search="true">
+                                <option value="">{{ translate('Choose One') }}</option>
+                                @foreach (\App\Models\Category::orderBy('name')->get() as $category)
+                                    <option value="{{ $category->id }}" {{ (string) ($settings['product_category_id'] ?? '') === (string) $category->id ? 'selected' : '' }}>
+                                        {{ $category->getTranslation('name') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row journal-product-source-group journal-product-source-group--brand">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label>{{ translate('Selected Brand') }}</label>
+                            <select class="form-control aiz-selectpicker" name="sections[{{ $index }}][settings][product_brand_id]" data-live-search="true">
+                                <option value="">{{ translate('Choose One') }}</option>
+                                @foreach (\App\Models\Brand::orderBy('name')->get() as $brand)
+                                    <option value="{{ $brand->id }}" {{ (string) ($settings['product_brand_id'] ?? '') === (string) $brand->id ? 'selected' : '' }}>
+                                        {{ $brand->getTranslation('name') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>{{ translate('YouTube URLs') }}</label>
+                    <div class="journal-youtube-url-list">
+                        @foreach ($journalYoutubeUrls as $youtubeIndex => $youtubeUrl)
+                            <div class="input-group mb-2 journal-youtube-row">
+                                <input
+                                    type="url"
+                                    class="form-control"
+                                    name="sections[{{ $index }}][settings][youtube_urls][{{ $youtubeIndex }}]"
+                                    value="{{ $youtubeUrl }}"
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                >
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-soft-danger remove-journal-youtube-row">{{ translate('Remove') }}</button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <button type="button" class="btn btn-soft-primary btn-sm add-journal-youtube-row">{{ translate('Add YouTube URL') }}</button>
                 </div>
             </div>
         </div>

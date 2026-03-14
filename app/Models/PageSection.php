@@ -44,6 +44,7 @@ class PageSection extends Model
         'cta_banner' => 'CTA Banner Section',
         'image_gallery' => 'Image Gallery Section',
         'spacer' => 'Spacer / Divider Section',
+        'journal_editorial' => 'Journal Editorial Section',
     ];
 
     public function page()

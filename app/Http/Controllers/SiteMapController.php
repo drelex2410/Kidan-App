@@ -107,7 +107,9 @@ class SiteMapController extends Controller
         }
 
         foreach ($pages as $page) {
-            $pagePath = $page->slug === 'about-us' ? '/about' : '/page/' . $page->slug;
+            $pagePath = $page->slug === 'about-us'
+                ? '/about'
+                : ($page->slug === 'journal' ? '/journal' : '/page/' . $page->slug);
             $xml .= '<url>
                         <loc>' . env('APP_URL') . $pagePath . '</loc>
                         <priority>0.9</priority>

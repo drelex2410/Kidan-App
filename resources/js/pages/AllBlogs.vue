@@ -1,213 +1,307 @@
 <template>
-  <div>
-    <v-container fluid class="pt-0 all-blogs px-0">
-      <!-- Filter Drawer (unchanged) -->
-      <div :class="['border-end filter-drawer', {'open c-scrollbar overflow-y-auto z-1020':filterDrawerOpen}]">
-        <div class="border-bottom pa-5 d-flex align-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-            <path d="M20,5H18.829a3,3,0,0,0-5.659,0H4A1,1,0,0,0,4,7h9.171a3,3,0,0,0,5.659,0H20a1,1,0,0,0,0-2ZM16,7a1,1,0,1,0-1-1A1,1,0,0,0,16,7ZM3,12a1,1,0,0,1,1-1H5.171a3,3,0,0,1,5.659,0H20a1,1,0,0,1,0,2H10.829a3,3,0,0,1-5.659,0H4A1,1,0,0,1,3,12Zm5,1a1,1,0,1,0-1-1A1,1,0,0,0,8,13ZM4,17a1,1,0,0,0,0,2h9.171a3,3,0,0,0,5.659,0H20a1,1,0,0,0,0-2H18.829a3,3,0,0,0-5.659,0Zm13,1a1,1,0,1,1-1-1A1,1,0,0,1,17,18Z" transform="translate(-3 -3)" fill="#2a2e34" fill-rule="evenodd"/>
-          </svg>
-          <span class="ms-4 fw-600 fs-14 lh-1">{{ $t('filters') }}</span>
-          <button type="button" @click.stop="toggleFilterDrawer(false)" class="ms-auto fw-600 fs-20 lh-1">
-            <i class="la la-close fs-20"></i>
-          </button>
-        </div>
-        <div class="pa-5">
-          <div class="mb-5">
-            <v-form class="border rounded-pill" @submit.stop.prevent="search()">
-              <v-row align="center" dense>
-                <v-col>
-                  <v-text-field :placeholder="$t('search')" type="text" hide-details="auto" variant="plain" v-model="queryParamBlog.searchKeyword" class="border-0 px-3"></v-text-field>
-                </v-col>
-                <v-col cols="auto">
-                  <v-btn size="small" icon @click.stop.prevent="search()" class="me-1 shadow-none">
-                    <i class="las la-search fs-18"></i>
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-form>
-          </div>
-          <div class="mb-5">
-            <h4 class="fw-700 fs-14 mb-4 border-bottom pb-3">{{ $t('categories') }}</h4>
-            <ul class="list-unstyled ps-0">
-              <li class="my-2">
-                <router-link :to="{ name: 'AllBlogs'}" :class="['text-reset fs-14', {'fw-600': is_empty_obj(currentCategory) }]">
-                  {{ $t('all_categories') }}
-                </router-link>
-              </li>
-              <li v-for="(category,i) in blogCategories" :key="i" class="my-2">
-                <router-link :to="{ name: 'AllBlogsFilter', params: {categorySlug: category.slug}}" :class="['text-reset fs-14', {'fw-600': currentCategory.slug === category.slug }]">
-                  {{ category.name }}
-                </router-link>
-              </li>
-            </ul>
-          </div>
-          <div class="mb-6">
-            <h4 class="fw-700 fs-14 mb-4 border-bottom pb-3">{{ $t('social_media') }}</h4>
-            <div>
-              <ul class="list-unstyled ps-0">
-                <li class="my-2">
-                  <SocialShare :title="currentPageTitle" />
-                </li>
-              </ul>
+  <div class="journal-page">
+    <section v-if="!loading && !isFilteredView && activeHero" class="journal-hero-shell">
+      <div class="journal-hero-index">
+        <button
+          v-for="(post, index) in heroPosts"
+          :key="post.slug"
+          type="button"
+          :class="['journal-hero-index-item', { 'is-active': index === heroIndex }]"
+          @click="setHeroIndex(index)"
+        >
+          {{ String(index + 1).padStart(2, '0') }}
+        </button>
+      </div>
+
+      <div class="journal-hero">
+        <transition name="journal-hero-fade" mode="out-in">
+          <div :key="`hero-copy-${activeHero.slug || heroIndex}`" class="journal-hero-copy">
+            <p class="journal-eyebrow">
+              {{ activeHero.category || 'Magazine' }}
+              <span class="journal-dot">•</span>
+              {{ activeHero.created_at }}
+            </p>
+            <h1 class="journal-hero-title">{{ activeHero.title }}</h1>
+            <p v-if="activeHero.author" class="journal-hero-author">By {{ activeHero.author }}</p>
+
+            <div class="journal-hero-actions">
+              <button type="button" class="journal-read-button" @click="openBlogModal(activeHero)">
+                {{ activeHero.hero_button_label || 'Read' }}
+              </button>
+
+              <div v-if="heroPosts.length > 1" class="journal-hero-nav">
+                <button type="button" class="journal-arrow" @click="navigateHero('prev')">
+                  <i class="las la-arrow-left"></i>
+                </button>
+                <button type="button" class="journal-arrow" @click="navigateHero('next')">
+                  <i class="las la-arrow-right"></i>
+                </button>
+              </div>
             </div>
           </div>
+        </transition>
+
+        <div class="journal-hero-media">
+          <transition name="journal-hero-fade" mode="out-in">
+            <div :key="`hero-media-${activeHero.slug || heroIndex}`" class="journal-hero-image-frame">
+              <img
+                v-if="activeHero.banner"
+                :src="activeHero.banner"
+                :alt="activeHero.title"
+                class="journal-hero-image"
+              >
+              <div v-else class="journal-image-placeholder">No image available</div>
+            </div>
+          </transition>
+        </div>
+      </div>
+    </section>
+
+    <section class="journal-toolbar">
+      <div class="journal-toolbar-head">
+        <p class="journal-section-label">
+          <span v-if="isFilteredView && searchKeyword">Search results for "{{ searchKeyword }}"</span>
+          <span v-else-if="isFilteredView && currentCategory && currentCategory.name">{{ currentCategory.name }}</span>
+          <span v-else>Find Magazines, Articles & Press Releases</span>
+        </p>
+        <p class="journal-section-count" v-if="!loading">{{ totalMaterials }} {{ totalMaterials === 1 ? 'Material' : 'Materials' }}</p>
+      </div>
+
+      <div class="journal-toolbar-controls">
+        <form class="journal-search" @submit.prevent="search()">
+          <input v-model="queryParamBlog.searchKeyword" type="search" :placeholder="$t('search')">
+          <button type="submit" aria-label="Search">
+            <i class="las la-search"></i>
+          </button>
+        </form>
+
+        <div class="journal-categories" v-if="blogCategories.length">
+          <router-link :to="{ name: listingRouteName }" :class="['journal-category-link', { 'is-active': !currentCategory || is_empty_obj(currentCategory) }]">
+            All
+          </router-link>
+          <router-link
+            v-for="category in blogCategories"
+            :key="category.id"
+            :to="{ name: filterRouteName, params: { categorySlug: category.slug } }"
+            :class="['journal-category-link', { 'is-active': currentCategory && currentCategory.slug === category.slug }]"
+          >
+            {{ category.name }}
+          </router-link>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!loading && !isFilteredView && firstGridPosts.length" class="journal-grid-section">
+      <div class="journal-post-grid">
+        <article
+          v-for="post in firstGridPosts"
+          :key="post.slug"
+          class="journal-card"
+          @click="openBlogModal(post)"
+        >
+          <div class="journal-card-image-wrap">
+            <img v-if="post.banner" :src="post.banner" :alt="post.title" class="journal-card-image">
+            <div v-else class="journal-image-placeholder journal-image-placeholder--card">No image</div>
+          </div>
+          <div class="journal-card-copy">
+            <p class="journal-card-meta">{{ post.category || 'Magazine' }} <span class="journal-dot">•</span> {{ post.created_at }}</p>
+            <h3 class="journal-card-title">{{ post.title }}</h3>
+            <p v-if="post.author" class="journal-card-author">By {{ post.author }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section v-if="!loading && !isFilteredView && mixedSection" class="journal-mixed-section">
+      <div class="journal-editorial-card">
+        <div class="journal-editorial-image-wrap">
+          <img
+            v-if="mixedSection.image"
+            :src="mixedSection.image"
+            :alt="mixedSection.title"
+            class="journal-editorial-image"
+          >
+          <div v-else class="journal-image-placeholder journal-image-placeholder--editorial">Editorial image</div>
+        </div>
+        <div class="journal-editorial-copy">
+          <h2 class="journal-editorial-title">{{ mixedSection.title }}</h2>
+          <div class="journal-editorial-content" v-html="mixedSection.content"></div>
         </div>
       </div>
 
-      <!-- Hero Banner Section -->
-      <v-row no-gutters v-if="featuredBlog && !searchKeyword && !loading">
-        <v-col cols="12">
-          <div class="hero-banner-wrapper">
-            <div class="hero-main-container">
-              <!-- Left Featured Card -->
-              <div class="hero-left-col">
-                <div class="hero-featured-card position-relative" @click="navigateToBlog(featuredBlog)">
-                  <v-img :src="featuredBlog.banner" :alt="featuredBlog.title" cover height="100%" class="hero-featured-image">
-                    <div class="hero-featured-overlay"></div>
-                  </v-img>
-                  <div class="hero-featured-content">
-                    <div class="hero-meta mb-3">
-                      <span class="text-uppercase fs-11 fw-600 letter-spacing-1">{{ featuredBlog.category || 'Magazine' }}</span>
-                      <span class="mx-2">•</span>
-                      <span class="fs-11">{{ featuredBlog.created_at }}</span>
+      <div class="journal-product-panel">
+        <article v-for="product in mixedSection.products" :key="product.id" class="journal-product-card">
+          <router-link :to="{ name: 'ProductDetails', params: { slug: product.slug } }" class="journal-product-link">
+            <div class="journal-product-image-wrap">
+              <img v-if="product.image" :src="product.image" :alt="product.name" class="journal-product-image">
+              <div v-else class="journal-image-placeholder journal-image-placeholder--product">Product image</div>
+            </div>
+            <div class="journal-product-copy">
+              <h3 class="journal-product-title">{{ product.name }}</h3>
+              <p v-if="product.description" class="journal-product-description">{{ product.description }}</p>
+              <p class="journal-product-price">{{ product.formatted_price }}</p>
+            </div>
+          </router-link>
+        </article>
+      </div>
+    </section>
+
+    <section v-if="!loading && !isFilteredView && secondGridPosts.length" class="journal-grid-section">
+      <div class="journal-post-grid">
+        <article
+          v-for="post in secondGridPosts"
+          :key="post.slug"
+          class="journal-card"
+          @click="openBlogModal(post)"
+        >
+          <div class="journal-card-image-wrap">
+            <img v-if="post.banner" :src="post.banner" :alt="post.title" class="journal-card-image">
+            <div v-else class="journal-image-placeholder journal-image-placeholder--card">No image</div>
+          </div>
+          <div class="journal-card-copy">
+            <p class="journal-card-meta">{{ post.category || 'Magazine' }} <span class="journal-dot">•</span> {{ post.created_at }}</p>
+            <h3 class="journal-card-title">{{ post.title }}</h3>
+            <p v-if="post.author" class="journal-card-author">By {{ post.author }}</p>
+          </div>
+        </article>
+      </div>
+
+      <div v-if="canLoadMoreSecondSection" class="journal-load-more-wrap">
+        <button type="button" class="journal-load-more-button" @click="loadMoreSecondSection" :disabled="loadingMoreJournal">
+          {{ loadingMoreJournal ? 'Loading...' : 'Load More' }}
+        </button>
+      </div>
+    </section>
+
+    <section v-if="!loading && !isFilteredView && videoCards.length" class="journal-video-section">
+      <div class="journal-video-grid">
+        <button
+          v-for="(video, index) in videoCards"
+          :key="`${video.blog_slug}-${video.video_id}`"
+          type="button"
+          :class="['journal-video-card', `video-card-${index + 1}`]"
+          @click="openVideoModal(video)"
+        >
+          <img :src="video.thumbnail" :alt="video.title" class="journal-video-thumb">
+          <span class="journal-video-overlay"></span>
+          <span class="journal-video-play"><i class="las la-play"></i></span>
+          <span class="journal-video-title">{{ video.title }}</span>
+        </button>
+      </div>
+    </section>
+
+    <section v-if="!loading && (isFilteredView || !journal) && blogs.length" class="journal-grid-section journal-grid-section--results">
+      <div class="journal-post-grid">
+        <article
+          v-for="post in blogs"
+          :key="post.slug"
+          class="journal-card"
+          @click="openBlogModal(post)"
+        >
+          <div class="journal-card-image-wrap">
+            <img v-if="post.banner" :src="post.banner" :alt="post.title" class="journal-card-image">
+            <div v-else class="journal-image-placeholder journal-image-placeholder--card">No image</div>
+          </div>
+          <div class="journal-card-copy">
+            <p class="journal-card-meta">{{ post.category || 'Magazine' }} <span class="journal-dot">•</span> {{ post.created_at }}</p>
+            <h3 class="journal-card-title">{{ post.title }}</h3>
+            <p v-if="post.author" class="journal-card-author">By {{ post.author }}</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="journal-pagination" v-if="totalPages > 1">
+        <v-pagination
+          v-model="queryParamBlog.page"
+          :length="totalPages"
+          prev-icon="las la-angle-left"
+          next-icon="las la-angle-right"
+          :total-visible="6"
+          @update:modelValue="pageSwitch"
+        ></v-pagination>
+      </div>
+    </section>
+
+    <section v-if="loading" class="journal-loading">
+      <div class="journal-loading-block journal-loading-block--hero"></div>
+      <div class="journal-loading-grid">
+        <div v-for="item in 6" :key="item" class="journal-loading-block journal-loading-block--card"></div>
+      </div>
+    </section>
+
+    <section v-if="!loading && !blogs.length" class="journal-empty">
+      <h2>{{ $t('no_blog_found') }}</h2>
+      <p>Publish journal posts from the admin panel to populate this page.</p>
+    </section>
+
+    <div v-if="modalOpen" class="journal-modal-backdrop" @click.self="closeBlogModal">
+      <div class="journal-modal">
+        <button type="button" class="journal-modal-close" @click="closeBlogModal">
+          <i class="las la-times"></i> <span>Close</span>
+        </button>
+
+        <div v-if="modalLoading" class="journal-modal-loading">Loading article...</div>
+
+        <template v-else-if="activeBlogDetails">
+          <div class="journal-modal-media">
+            <img v-if="activeBlogDetails.banner" :src="activeBlogDetails.banner" :alt="activeBlogDetails.title" class="journal-modal-image">
+            <div v-else class="journal-image-placeholder journal-image-placeholder--modal">No featured image</div>
+          </div>
+
+          <div class="journal-modal-content">
+            <div class="journal-modal-header">
+              <p class="journal-modal-meta">
+                <span v-if="activeBlogDetails.category">{{ activeBlogDetails.category }}</span>
+                <span v-if="activeBlogDetails.category && activeBlogDetails.created_at" class="journal-dot">•</span>
+                <span v-if="activeBlogDetails.created_at">{{ activeBlogDetails.created_at }}</span>
+              </p>
+              <h2 class="journal-modal-title">{{ activeBlogDetails.title }}</h2>
+              <p v-if="activeBlogDetails.author" class="journal-modal-author">By {{ activeBlogDetails.author }}</p>
+            </div>
+
+            <div v-if="activeBlogDetails.modal_summary" class="journal-modal-summary" v-html="activeBlogDetails.modal_summary"></div>
+            <div class="journal-modal-body" v-html="activeBlogDetails.description"></div>
+
+            <div v-if="activeBlogDetails.related_products && activeBlogDetails.related_products.length" class="journal-modal-products">
+              <h3>Related Items</h3>
+              <div class="journal-modal-product-grid">
+                <article v-for="product in activeBlogDetails.related_products" :key="product.id" class="journal-product-card">
+                  <router-link :to="{ name: 'ProductDetails', params: { slug: product.slug } }" class="journal-product-link" @click="closeBlogModal">
+                    <div class="journal-product-image-wrap">
+                      <img v-if="product.image" :src="product.image" :alt="product.name" class="journal-product-image">
+                      <div v-else class="journal-image-placeholder journal-image-placeholder--product">Product image</div>
                     </div>
-                    <h2 class="hero-title fw-700 mb-3">
-                      {{ featuredBlog.title }}
-                    </h2>
-                    <p class="hero-author fs-13 mb-0" v-if="featuredBlog.author">
-                      By {{ featuredBlog.author }}
-                    </p>
-                  </div>
-                  <!-- Navigation Arrows -->
-                  <div class="hero-nav-arrows">
-                    <button class="hero-arrow hero-arrow-left" @click.stop="navigateFeatured('prev')" :disabled="currentFeaturedIndex === 0">
-                      <i class="las la-arrow-left"></i>
-                    </button>
-                    <button class="hero-arrow hero-arrow-right" @click.stop="navigateFeatured('next')" :disabled="currentFeaturedIndex >= blogs.length - 1">
-                      <i class="las la-arrow-right"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Right Side Scrollable Column -->
-              <div class="hero-right-col d-none d-md-block">
-                <div class="hero-side-scroll-container">
-                  <div class="hero-side-card" v-for="(blog, index) in sideHeroBlogs" :key="index" @click="navigateToBlog(blog)">
-                    <v-img :src="blog.banner" :alt="blog.title" cover height="100%" class="hero-side-image"></v-img>
-                    <div class="hero-side-overlay"></div>
-                    <div class="hero-side-content">
-                      <div class="hero-side-meta mb-2">
-                        <span class="text-uppercase fs-10 fw-600 letter-spacing-1">{{ blog.category || 'Magazine' }}</span>
-                        <span class="mx-2">•</span>
-                        <span class="fs-10">{{ blog.created_at }}</span>
-                      </div>
-                      <h3 class="hero-side-title fs-14 fw-600 mb-0">
-                        {{ blog.title }}
-                      </h3>
+                    <div class="journal-product-copy">
+                      <h3 class="journal-product-title">{{ product.name }}</h3>
+                      <p v-if="product.description" class="journal-product-description">{{ product.description }}</p>
+                      <p class="journal-product-price">{{ product.formatted_price }}</p>
                     </div>
-                  </div>
-                </div>
+                  </router-link>
+                </article>
               </div>
             </div>
           </div>
-        </v-col>
-      </v-row>
+        </template>
+      </div>
+    </div>
 
-      <v-row no-gutters v-if="loading && !searchKeyword">
-        <v-col cols="12">
-          <v-skeleton-loader type="image" height="500" class="mb-0"></v-skeleton-loader>
-        </v-col>
-      </v-row>
-
-      <!-- Content Section Header -->
-      <v-container class="py-6">
-        <v-row align="center" justify="space-between">
-          <v-col cols="auto">
-            <div class="d-flex align-center">
-              <h2 class="fs-14 fw-600 text-uppercase letter-spacing-1">
-                <span v-if="searchKeyword">{{ $t('search_results_for') }} "{{ searchKeyword }}"</span>
-                <span v-else-if="!is_empty_obj(currentCategory)">{{ currentCategory.name }}</span>
-                <span v-else>Find Magazines, Article & Press Releases</span>
-              </h2>
-            </div>
-          </v-col>
-          <v-col cols="auto">
-            <div class="d-flex align-center">
-              <span class="me-3 fs-14" v-if="!loading">{{ totalMaterials }} {{ totalMaterials === 1 ? 'Material' : 'Materials' }}</span>
-              <v-btn variant="outlined" size="small" @click.stop="toggleFilterDrawer(true)" class="text-capitalize d-md-none">
-                <i class="las la-filter me-2"></i>
-                {{ $t('filters') }}
-              </v-btn>
-            </div>
-          </v-col>
-        </v-row>
-        <v-row class="mt-4" v-if="searchKeyword">
-          <v-col cols="12" md="6">
-            <v-form class="border rounded-pill" @submit.stop.prevent="search()">
-              <v-row align="center" dense>
-                <v-col>
-                  <v-text-field :placeholder="$t('search')" type="text" hide-details="auto" variant="plain" v-model="queryParamBlog.searchKeyword" class="border-0 px-4"></v-text-field>
-                </v-col>
-                <v-col cols="auto">
-                  <v-btn size="small" icon @click.stop.prevent="search()" class="me-2">
-                    <i class="las la-search fs-18"></i>
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-form>
-          </v-col>
-        </v-row>
-      </v-container>
-
-      <!-- Blog Grid -->
-      <v-container class="pb-12">
-        <v-row class="gy-6" v-if="!loading && displayBlogs.length > 0">
-          <v-col v-for="(blog, i) in displayBlogs" :key="blog.id || i" cols="12" sm="6" md="4">
-            <v-card class="blog-card h-100 border-0 rounded-lg overflow-hidden" elevation="0" style="transition: all 0.3s ease;" @click="navigateToBlog(blog)">
-              <div class="position-relative overflow-hidden blog-image-wrapper">
-                <v-img :src="blog.banner" :alt="blog.title" height="360" width="440" cover class="blog-image" style="transition: transform 0.3s ease; width: 100%; object-fit: cover;"></v-img>
-                <div class="position-absolute top-0 end-0 pa-3">
-                  <v-btn icon size="small" variant="flat" color="white" class="shadow" @click.stop="toggleFavorite(blog)">
-                    <i :class="['lar', blog.isFavorite ? 'las la-heart' : 'la-heart']" :style="blog.isFavorite ? 'color: red;' : ''"></i>
-                  </v-btn>
-                </div>
-              </div>
-              <v-card-text class="pa-4">
-                <div class="d-flex align-center mb-2">
-                  <span class="text-uppercase fs-11 fw-600 letter-spacing-1 text-grey">{{ blog.category || 'Magazine' }}</span>
-                  <span class="mx-2 text-grey">•</span>
-                  <span class="fs-11 text-grey">{{ blog.created_at }}</span>
-                </div>
-                <h3 class="fs-16 fw-600 mb-2 blog-title-hover" style="line-height: 1.5; min-height: 48px;">
-                  {{ blog.title }}
-                </h3>
-                <p class="fs-13 text-grey mb-3" style="line-height: 1.6;" v-if="blog.author">
-                  By {{ blog.author }}
-                </p>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-        <v-row class="gy-6" v-if="loading">
-          <v-col v-for="n in 6" :key="n" cols="12" sm="6" md="4">
-            <v-skeleton-loader type="image, article" class="mb-4"></v-skeleton-loader>
-          </v-col>
-        </v-row>
-        <div class="pa-8 text-center fs-18 text-grey" v-if="!loading && blogs.length === 0">
-          {{ $t('no_blog_found') }}
-        </div>
-        <div class="text-center mt-8" v-if="totalPages > 1 && !loading">
-          <v-pagination v-model="queryParamBlog.page" :length="totalPages" prev-icon="las la-angle-left" next-icon="las la-angle-right" :total-visible="7" elevation="0" @update:modelValue="pageSwitch" class="my-4"></v-pagination>
-        </div>
-      </v-container>
-    </v-container>
+    <div v-if="videoModalOpen && activeVideo" class="journal-video-modal-backdrop" @click.self="closeVideoModal">
+      <div class="journal-video-modal">
+        <button type="button" class="journal-video-modal-close" @click="closeVideoModal">
+          <i class="las la-times"></i>
+        </button>
+        <iframe
+          :src="activeVideo.embed_url"
+          :title="activeVideo.title"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import SocialShare from "../components/product/SocialShare.vue";
 export default {
   head() {
     return {
@@ -216,185 +310,333 @@ export default {
   },
   data: () => ({
     loading: true,
-    searchKeyword: "",
-    currentPage: 1,
-    totalPages: 1,
+    loadingMoreJournal: false,
+    modalLoading: false,
     blogs: [],
-    recentBlogs: [],
-    featuredBlog: null,
-    currentFeaturedIndex: 0,
-    filterDrawerOpen: false,
+    journalFeedPosts: [],
     blogCategories: [],
+    journal: null,
+    currentCategory: {},
+    totalPages: 1,
+    totalMaterials: 0,
+    searchKeyword: "",
+    heroIndex: 0,
+    modalOpen: false,
+    activeBlogSlug: null,
+    activeBlogDetails: null,
+    blogCache: {},
+    videoModalOpen: false,
+    activeVideo: null,
+    heroAutoRotateTimer: null,
+    journalLoadedPage: 1,
+    secondSectionVisibleCount: 6,
     queryParamBlog: {
       page: 1,
       categorySlug: null,
       searchKeyword: "",
     },
-    currentCategory: {},
-    favoriteBlogs: [],
-    totalMaterials: 0,
   }),
-  components: {
-    SocialShare,
-  },
   computed: {
-    displayBlogs() {
-      if (this.featuredBlog && !this.searchKeyword && this.blogs.length > 3) {
-        return this.blogs.filter((blog, index) => index > 2);
-      }
-      return this.blogs;
+    routeBlogSlug() {
+      return this.$route.params.slug || null;
     },
-    sideHeroBlogs() {
-      if (this.blogs.length >= 3 && !this.searchKeyword) {
-        return this.blogs.slice(1, 3);
+    listingRouteName() {
+      return ["Journal", "JournalFilter", "JournalSearch"].includes(this.$route.name) ? "Journal" : "AllBlogs";
+    },
+    filterRouteName() {
+      return ["Journal", "JournalFilter", "JournalSearch"].includes(this.$route.name)
+        ? "JournalFilter"
+        : "AllBlogsFilter";
+    },
+    searchRouteName() {
+      return ["Journal", "JournalFilter", "JournalSearch"].includes(this.$route.name)
+        ? "JournalSearch"
+        : "SearchBlogs";
+    },
+    isFilteredView() {
+      return !!this.searchKeyword || (this.currentCategory && !this.is_empty_obj(this.currentCategory));
+    },
+    heroPosts() {
+      return this.journal?.hero_posts || [];
+    },
+    activeHero() {
+      return this.heroPosts[this.heroIndex] || null;
+    },
+    firstGridPosts() {
+      return this.journalFeedPosts.slice(0, 6);
+    },
+    mixedSection() {
+      return this.journal?.mixed_section || null;
+    },
+    secondGridPosts() {
+      return this.journalFeedPosts.slice(6, 6 + this.secondSectionVisibleCount);
+    },
+    videoCards() {
+      return this.journal?.videos || [];
+    },
+    canLoadMoreSecondSection() {
+      if (this.isFilteredView) {
+        return false;
       }
-      return [];
+
+      return this.journalFeedPosts.length > 6 && (
+        this.secondSectionVisibleCount < Math.max(this.journalFeedPosts.length - 6, 0) ||
+        this.journalFeedPosts.length < this.totalMaterials
+      );
     },
     pageTitle() {
       if (this.searchKeyword) {
         return `${this.$i18n.t('search_results_for')} "${this.searchKeyword}"`;
-      } else if (!this.is_empty_obj(this.currentCategory)) {
+      }
+      if (this.currentCategory && !this.is_empty_obj(this.currentCategory)) {
         return this.currentCategory.name;
+      }
+      if (["Journal", "JournalFilter", "JournalSearch"].includes(this.$route.name)) {
+        return "Journal";
       }
       return this.$i18n.t('all_blogs');
     },
-    currentPageTitle() {
-      if (this.searchKeyword) {
-        return `${this.$i18n.t('search_results_for')} "${this.searchKeyword}"`;
-      } else if (!this.is_empty_obj(this.currentCategory)) {
-        return this.currentCategory.name;
-      }
-      return this.$i18n.t('all_blogs');
-    }
   },
   methods: {
-    toggleFilterDrawer(status) {
-      this.filterDrawerOpen = status;
+    async getBlogCategories() {
+      const res = await this.call_api("get", "all-blog-categories");
+      if (res?.data?.success) {
+        this.blogCategories = res.data.data || [];
+      }
+    },
+    async getBlogList(obj = {}) {
+      this.loading = true;
+      const params = { ...this.queryParamBlog, ...obj };
+      let url = `all-blogs/search?page=${params.page || 1}&per_page=${params.searchKeyword || params.categorySlug ? 12 : 18}`;
+      url += params.categorySlug ? `&category_slug=${params.categorySlug}` : "";
+      url += params.searchKeyword ? `&searchKeyword=${encodeURIComponent(params.searchKeyword)}` : "";
+
+      try {
+        const res = await this.call_api("get", url);
+        if (res?.data?.success) {
+          this.blogs = res.data.blogs?.data || [];
+          this.journal = res.data.journal || null;
+          this.currentCategory = res.data.currentCategory || {};
+          this.totalPages = res.data.totalPage || 1;
+          this.totalMaterials = res.data.total || this.blogs.length;
+          this.queryParamBlog.page = res.data.currentPage || 1;
+          this.journalLoadedPage = res.data.currentPage || 1;
+          this.searchKeyword = params.searchKeyword || "";
+          this.syncJournalFeed(this.blogs, {
+            append: !params.searchKeyword && !params.categorySlug && (params.page || 1) > 1,
+            resetVisibleCount: (params.page || 1) <= 1 || !!params.searchKeyword || !!params.categorySlug,
+          });
+          if (this.heroIndex >= this.heroPosts.length) {
+            this.heroIndex = 0;
+          }
+          this.restartHeroAutoRotate();
+          if (this.routeBlogSlug && this.activeBlogSlug !== this.routeBlogSlug) {
+            this.openBlogModal({ slug: this.routeBlogSlug });
+          }
+        }
+      } catch (error) {
+        this.snack({
+          message: this.$i18n.t("something_went_wrong"),
+          color: "red",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+    search() {
+      this.$router.push({
+        name: this.searchRouteName,
+        params: this.queryParamBlog.searchKeyword ? { searchKeyword: this.queryParamBlog.searchKeyword } : {},
+        query: { page: 1 },
+      }).catch(() => {});
     },
     pageSwitch(pageNumber) {
       this.$router.push({
         query: {
           ...this.$route.query,
-          page: this.queryParamBlog.page,
+          page: pageNumber,
         },
       }).catch(() => {});
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      this.getBlogList({
-        page: pageNumber,
-      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    search() {
-      this.$router.push({
-        name: "SearchBlogs",
-        params: this.queryParamBlog.searchKeyword.length > 0 ? { searchKeyword: this.queryParamBlog.searchKeyword } : {},
-        query: { page: 1 },
-      }).catch(() => {});
+    setHeroIndex(index) {
+      this.heroIndex = index;
+      this.restartHeroAutoRotate();
     },
-    async getBlogCategories() {
-      try {
-        const res = await this.call_api("get", `all-blog-categories`);
-        if (res.data.success) {
-          this.blogCategories = res.data.data || [];
-          this.recentBlogs = res.data.recentBlogs ? res.data.recentBlogs.data : [];
-        } else {
-          this.snack({
-            message: this.$i18n.t("something_went_wrong"),
-            color: "red",
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error);
+    navigateHero(direction) {
+      if (!this.heroPosts.length) {
+        return;
       }
-    },
-    async getBlogList(obj) {
-      this.loading = true;
-      let params = { ...this.queryParamBlog, ...obj };
-      let url = "all-blogs/search?";
-      url += `&page=${params.page || this.queryParamBlog.page}`;
-      url += params.categorySlug ? `&category_slug=${params.categorySlug}` : "";
-      url += params.searchKeyword ? `&searchKeyword=${params.searchKeyword}` : "";
-      try {
-        const res = await this.call_api("get", url);
-        if (res.data.success) {
-          this.blogs = res.data.blogs.data || [];
-          this.totalPages = res.data.totalPage || 1;
-          this.queryParamBlog.page = res.data.currentPage || 1;
-          this.currentCategory = res.data.currentCategory || {};
-          this.totalMaterials = this.blogs.length;
-          if (this.blogs.length > 0 && !params.searchKeyword) {
-            this.currentFeaturedIndex = 0;
-            this.featuredBlog = this.blogs[0];
-          } else {
-            this.featuredBlog = null;
-          }
-          this.loadFavorites();
-        }
-        if (params.searchKeyword && params.searchKeyword.length > 0) {
-          this.searchKeyword = params.searchKeyword;
-        } else {
-          this.searchKeyword = "";
-        }
-      } catch (error) {
-        console.error('Error fetching blogs:', error);
-        this.snack({
-          message: this.$i18n.t("something_went_wrong"),
-          color: "red",
-        });
+
+      if (direction === "next") {
+        this.heroIndex = (this.heroIndex + 1) % this.heroPosts.length;
       }
-      this.loading = false;
+
+      if (direction === "prev") {
+        this.heroIndex = (this.heroIndex - 1 + this.heroPosts.length) % this.heroPosts.length;
+      }
+
+      this.restartHeroAutoRotate();
     },
-    toggleFavorite(blog) {
-      const index = this.favoriteBlogs.indexOf(blog.slug);
-      if (index > -1) {
-        this.favoriteBlogs.splice(index, 1);
-        blog.isFavorite = false;
+    syncJournalFeed(posts, options = {}) {
+      const { append = false, resetVisibleCount = false } = options;
+
+      if (this.isFilteredView) {
+        this.journalFeedPosts = [];
+        this.secondSectionVisibleCount = 6;
+        return;
+      }
+
+      if (append) {
+        const existingSlugs = new Set(this.journalFeedPosts.map((post) => post.slug));
+        const nextPosts = posts.filter((post) => !existingSlugs.has(post.slug));
+        this.journalFeedPosts = [...this.journalFeedPosts, ...nextPosts];
       } else {
-        this.favoriteBlogs.push(blog.slug);
-        blog.isFavorite = true;
+        this.journalFeedPosts = posts;
       }
-      localStorage.setItem('favoriteBlogSlugs', JSON.stringify(this.favoriteBlogs));
-    },
-    loadFavorites() {
-      const savedFavorites = localStorage.getItem('favoriteBlogSlugs');
-      if (savedFavorites) {
-        this.favoriteBlogs = JSON.parse(savedFavorites);
+
+      if (resetVisibleCount) {
+        this.secondSectionVisibleCount = 6;
       }
-      this.blogs.forEach(blog => {
-        blog.isFavorite = this.favoriteBlogs.includes(blog.slug);
-      });
     },
-    navigateToBlog(blog) {
-      this.$router.push({ name: 'BlogDetails', params: { slug: blog.slug } });
-    },
-    navigateFeatured(direction) {
-      if (direction === 'next' && this.currentFeaturedIndex < this.blogs.length - 1) {
-        this.currentFeaturedIndex++;
-      } else if (direction === 'prev' && this.currentFeaturedIndex > 0) {
-        this.currentFeaturedIndex--;
+    async loadMoreSecondSection() {
+      const nextVisibleCount = this.secondSectionVisibleCount + 6;
+      const loadedRemainingCount = Math.max(this.journalFeedPosts.length - 6, 0);
+
+      if (nextVisibleCount <= loadedRemainingCount) {
+        this.secondSectionVisibleCount = nextVisibleCount;
+        return;
       }
-      this.featuredBlog = this.blogs[this.currentFeaturedIndex];
+
+      if (this.journalFeedPosts.length >= this.totalMaterials || this.loadingMoreJournal) {
+        this.secondSectionVisibleCount = Math.min(nextVisibleCount, loadedRemainingCount);
+        return;
+      }
+
+      this.loadingMoreJournal = true;
+
+      try {
+        const nextPage = this.journalLoadedPage + 1;
+        const res = await this.call_api("get", `all-blogs/search?page=${nextPage}&per_page=18`);
+
+        if (res?.data?.success) {
+          const nextPosts = res.data.blogs?.data || [];
+          this.totalPages = res.data.totalPage || this.totalPages;
+          this.totalMaterials = res.data.total || this.totalMaterials;
+          this.journalLoadedPage = res.data.currentPage || nextPage;
+          this.syncJournalFeed(nextPosts, { append: true });
+        }
+      } finally {
+        this.loadingMoreJournal = false;
+        this.secondSectionVisibleCount = Math.min(nextVisibleCount, Math.max(this.journalFeedPosts.length - 6, 0));
+      }
+    },
+    startHeroAutoRotate() {
+      this.stopHeroAutoRotate();
+
+      if (this.isFilteredView || this.heroPosts.length <= 1) {
+        return;
+      }
+
+      this.heroAutoRotateTimer = window.setInterval(() => {
+        this.heroIndex = (this.heroIndex + 1) % this.heroPosts.length;
+      }, 5500);
+    },
+    stopHeroAutoRotate() {
+      if (this.heroAutoRotateTimer) {
+        window.clearInterval(this.heroAutoRotateTimer);
+        this.heroAutoRotateTimer = null;
+      }
+    },
+    restartHeroAutoRotate() {
+      this.startHeroAutoRotate();
+    },
+    async openBlogModal(blog) {
+      this.modalOpen = true;
+      this.modalLoading = true;
+      this.activeBlogSlug = blog.slug;
+      this.syncBodyScroll();
+
+      if (this.blogCache[blog.slug]) {
+        this.activeBlogDetails = this.blogCache[blog.slug];
+        this.modalLoading = false;
+        return;
+      }
+
+      try {
+        const res = await this.call_api("get", `blog/details/${blog.slug}`);
+        if (res?.data?.success) {
+          this.activeBlogDetails = res.data.data;
+          this.blogCache = {
+            ...this.blogCache,
+            [blog.slug]: res.data.data,
+          };
+        }
+      } finally {
+        this.modalLoading = false;
+      }
+    },
+    closeBlogModal() {
+      this.modalOpen = false;
+      this.modalLoading = false;
+      this.activeBlogSlug = null;
+      this.activeBlogDetails = null;
+      this.syncBodyScroll();
+      if (this.$route.name === "BlogDetails") {
+        this.$router.replace({ name: "AllBlogs" }).catch(() => {});
+      }
+    },
+    openVideoModal(video) {
+      this.activeVideo = video;
+      this.videoModalOpen = true;
+      this.syncBodyScroll();
+    },
+    closeVideoModal() {
+      this.videoModalOpen = false;
+      this.activeVideo = null;
+      this.syncBodyScroll();
+    },
+    syncBodyScroll() {
+      document.body.classList.toggle("journal-modal-open", this.modalOpen || this.videoModalOpen);
+    },
+    handleKeydown(event) {
+      if (event.key === "Escape") {
+        if (this.videoModalOpen) {
+          this.closeVideoModal();
+          return;
+        }
+
+        if (this.modalOpen) {
+          this.closeBlogModal();
+        }
+      }
     },
   },
   watch: {
-    '$route'(to, from) {
-      if (to.params.categorySlug !== from.params.categorySlug || 
-          to.params.searchKeyword !== from.params.searchKeyword ||
-          to.query.page !== from.query.page) {
+    $route(to, from) {
+      if (
+        to.params.categorySlug !== from.params.categorySlug ||
+        to.params.searchKeyword !== from.params.searchKeyword ||
+        to.params.slug !== from.params.slug ||
+        to.query.page !== from.query.page
+      ) {
         this.queryParamBlog.categorySlug = to.params.categorySlug || null;
         this.queryParamBlog.searchKeyword = to.params.searchKeyword || "";
-        this.queryParamBlog.page = to.query.page || 1;
+        this.queryParamBlog.page = Number(to.query.page || 1);
         this.getBlogList({
           page: this.queryParamBlog.page,
           categorySlug: this.queryParamBlog.categorySlug,
           searchKeyword: this.queryParamBlog.searchKeyword,
         });
+      } else if (!to.params.slug && this.modalOpen) {
+        this.closeBlogModal();
       }
-    }
+    },
   },
   async created() {
     this.queryParamBlog.categorySlug = this.$route.params.categorySlug || null;
     this.queryParamBlog.searchKeyword = this.$route.params.searchKeyword || "";
-    this.queryParamBlog.page = this.$route.query.page || 1;
+    this.queryParamBlog.page = Number(this.$route.query.page || 1);
     await this.getBlogCategories();
     await this.getBlogList({
       page: this.queryParamBlog.page,
@@ -402,336 +644,709 @@ export default {
       searchKeyword: this.queryParamBlog.searchKeyword,
     });
   },
+  mounted() {
+    document.addEventListener("keydown", this.handleKeydown);
+  },
+  beforeUnmount() {
+    this.stopHeroAutoRotate();
+    document.removeEventListener("keydown", this.handleKeydown);
+    document.body.classList.remove("journal-modal-open");
+  },
 };
 </script>
 
 <style scoped>
-/* Hero Banner Styles - Matching Reference Image */
-.hero-banner-wrapper {
-  width: 100%;
-  height: 500px;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
+.journal-page {
+  background: #f7f0e4;
+  color: #171310;
+  padding: 2.25rem 1.25rem 4rem;
 }
 
-.hero-main-container {
+.journal-hero-shell,
+.journal-toolbar,
+.journal-grid-section,
+.journal-mixed-section,
+.journal-video-section,
+.journal-empty,
+.journal-loading {
+  max-width: 1220px;
+  margin: 0 auto 3rem;
+}
+
+.journal-hero-shell {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.journal-hero-index {
   display: flex;
-  width: 100%;
-  height: 500px;
-  gap: 0;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
 }
 
-/* Left Featured Section - 60% width */
-.hero-left-col {
-  flex: 0 0 60%;
-  height: 500px;
+.journal-hero-index-item {
+  border: 0;
+  border-left: 1px solid rgba(23, 19, 16, 0.16);
+  background: transparent;
+  color: rgba(23, 19, 16, 0.5);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  padding: 0 0 0 0.65rem;
+  text-align: left;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.journal-hero-index-item.is-active {
+  color: #171310;
+  border-color: #171310;
+}
+
+.journal-hero {
+  display: grid;
+  grid-template-columns: 65fr 35fr;
+  gap: 3rem;
+  align-items: center;
+  min-height: 430px;
+}
+
+.journal-hero-copy {
+  padding: 2rem 0;
+  max-width: 640px;
+}
+
+.journal-hero-fade-enter-active,
+.journal-hero-fade-leave-active {
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.journal-hero-fade-enter-from,
+.journal-hero-fade-leave-to {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.journal-eyebrow,
+.journal-card-meta,
+.journal-modal-meta {
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: rgba(23, 19, 16, 0.72);
+  margin: 0 0 0.85rem;
+}
+
+.journal-dot {
+  padding: 0 0.35rem;
+}
+
+.journal-hero-title,
+.journal-modal-title {
+  font-size: clamp(2.4rem, 4vw, 4rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  margin: 0 0 1rem;
+  font-weight: 700;
+}
+
+.journal-hero-author,
+.journal-card-author,
+.journal-modal-author {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(23, 19, 16, 0.72);
+}
+
+.journal-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+
+.journal-read-button {
+  border: 1px solid #171310;
+  background: #171310;
+  color: #f7f0e4;
+  border-radius: 999px;
+  padding: 0.9rem 1.55rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.journal-read-button:hover {
+  transform: translateY(-1px);
+  background: #2a211c;
+}
+
+.journal-hero-nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.journal-arrow {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(23, 19, 16, 0.2);
+  background: rgba(255, 255, 255, 0.45);
+  color: #171310;
+}
+
+.journal-hero-media {
+  min-height: 430px;
+}
+
+.journal-hero-image-frame,
+.journal-editorial-image-wrap,
+.journal-card-image-wrap,
+.journal-product-image-wrap {
   position: relative;
-}
-
-.hero-featured-card {
-  height: 100%;
-  width: 100%;
   overflow: hidden;
-  cursor: pointer;
-  position: relative;
+  background: rgba(23, 19, 16, 0.08);
 }
 
-.hero-featured-image {
+.journal-hero-image-frame {
+  height: 100%;
+  min-height: 430px;
+  border-radius: 0;
+}
+
+.journal-hero-image,
+.journal-editorial-image,
+.journal-card-image,
+.journal-product-image,
+.journal-modal-image,
+.journal-video-thumb {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.hero-featured-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 40%, transparent 70%);
-  z-index: 1;
+.journal-toolbar {
+  border-top: 1px solid rgba(23, 19, 16, 0.12);
+  padding-top: 0.85rem;
 }
 
-.hero-featured-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 40px;
-  color: white;
-  z-index: 2;
-}
-
-.hero-meta {
-  color: rgba(255,255,255,0.95);
-  font-size: 11px;
-}
-
-.hero-title {
-  font-size: 32px;
-  line-height: 1.3;
-  color: white;
-  max-width: 85%;
-  margin-bottom: 12px;
-}
-
-.hero-author {
-  color: rgba(255,255,255,0.9);
-  font-size: 13px;
-}
-
-/* Navigation Arrows */
-.hero-nav-arrows {
-  position: absolute;
-  top: 50%;
-  left: 20px;
-  transform: translateY(-50%);
+.journal-toolbar-head,
+.journal-toolbar-controls {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 3;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.hero-arrow {
-  width: 44px;
-  height: 44px;
+.journal-toolbar-controls {
+  margin-top: 1rem;
+  align-items: flex-start;
+}
+
+.journal-section-label,
+.journal-section-count {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(23, 19, 16, 0.82);
+}
+
+.journal-search {
+  display: flex;
+  align-items: center;
+  width: min(360px, 100%);
+  border: 1px solid rgba(23, 19, 16, 0.14);
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.journal-search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0.95rem 1rem;
+  color: #171310;
+}
+
+.journal-search button {
+  border: 0;
+  background: transparent;
+  padding: 0 1rem;
+  font-size: 1rem;
+  color: #171310;
+}
+
+.journal-categories {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.journal-category-link {
+  color: rgba(23, 19, 16, 0.72);
+  text-decoration: none;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 19, 16, 0.12);
+  font-size: 0.82rem;
+}
+
+.journal-category-link.is-active {
+  color: #f7f0e4;
+  background: #171310;
+  border-color: #171310;
+}
+
+.journal-post-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.35rem;
+}
+
+.journal-card {
+  cursor: pointer;
+}
+
+.journal-card-image-wrap {
+  aspect-ratio: 0.92;
+}
+
+.journal-card-copy {
+  padding-top: 0.7rem;
+}
+
+.journal-card-title,
+.journal-editorial-title,
+.journal-product-title {
+  margin: 0;
+  font-weight: 700;
+  color: #171310;
+}
+
+.journal-card-title {
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.journal-mixed-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.journal-editorial-card {
+  background: #dfc49b;
+  padding: 1rem;
+}
+
+.journal-editorial-image-wrap {
+  aspect-ratio: 1.28;
+  margin-bottom: 1.25rem;
+}
+
+.journal-editorial-title {
+  font-size: 1.35rem;
+  line-height: 1.12;
+  margin-bottom: 0.9rem;
+}
+
+.journal-editorial-content,
+.journal-modal-body,
+.journal-modal-summary {
+  color: rgba(23, 19, 16, 0.8);
+  line-height: 1.85;
+  font-size: 0.98rem;
+}
+
+.journal-editorial-content :deep(p),
+.journal-modal-body :deep(p),
+.journal-modal-summary :deep(p) {
+  margin-bottom: 1rem;
+}
+
+.journal-product-panel,
+.journal-modal-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.journal-product-card {
+  background: transparent;
+}
+
+.journal-product-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.journal-product-image-wrap {
+  aspect-ratio: 0.86;
+  margin-bottom: 0.7rem;
+}
+
+.journal-product-title {
+  font-size: 1rem;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.journal-product-description {
+  margin: 0 0 0.45rem;
+  color: rgba(23, 19, 16, 0.58);
+  font-size: 0.88rem;
+}
+
+.journal-product-price {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.journal-video-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: repeat(2, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.journal-video-card {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  background: #000;
+  min-height: 180px;
+}
+
+.video-card-1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.video-card-2 {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.video-card-3 {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.video-card-4 {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+.journal-video-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.48));
+}
+
+.journal-video-play {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.95);
-  border: none;
+  background: rgba(196, 38, 24, 0.95);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.journal-video-title {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  color: #fff;
+  text-align: left;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.journal-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.journal-load-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.25rem;
+}
+
+.journal-load-more-button {
+  border: 1px solid rgba(23, 19, 16, 0.2);
+  background: transparent;
+  color: #171310;
+  padding: 0.9rem 2rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.journal-load-more-button:hover:not(:disabled) {
+  background: #171310;
+  border-color: #171310;
+  color: #f7f0e4;
+}
+
+.journal-load-more-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.journal-empty {
+  text-align: center;
+  padding: 6rem 1rem;
+}
+
+.journal-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.journal-loading-block {
+  background: linear-gradient(90deg, rgba(255,255,255,0.2), rgba(255,255,255,0.45), rgba(255,255,255,0.2));
+  background-size: 200% 100%;
+  animation: shimmer 1.25s infinite linear;
+}
+
+.journal-loading-block--hero {
+  min-height: 420px;
+}
+
+.journal-loading-block--card {
+  min-height: 360px;
+}
+
+.journal-image-placeholder {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #333;
-  font-size: 18px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  color: rgba(23, 19, 16, 0.52);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.hero-arrow:hover:not(:disabled) {
-  background: white;
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.hero-arrow:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Right Side Scrollable Column - 40% width */
-.hero-right-col {
-  flex: 0 0 40%;
-  height: 500px;
-  overflow: hidden;
-}
-
-.hero-side-scroll-container {
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+.journal-modal-backdrop,
+.journal-video-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 12, 10, 0.34);
+  z-index: 2400;
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  scroll-behavior: smooth;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
 }
 
-/* Custom scrollbar for side container */
-.hero-side-scroll-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.hero-side-scroll-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.hero-side-scroll-container::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-.hero-side-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-.hero-side-card {
+.journal-modal {
   position: relative;
-  height: 250px;
-  min-height: 250px;
+  width: min(1400px, 100vw);
+  height: 100vh;
+  background: #f7f0e4;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
   overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.3s ease;
 }
 
-.hero-side-card:hover {
-  transform: scale(1.02);
-  z-index: 2;
+.journal-modal-close,
+.journal-video-modal-close {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.2rem;
+  z-index: 3;
+  border: 0;
+  background: transparent;
+  color: #171310;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.hero-side-image {
+.journal-modal-media {
+  min-height: 100vh;
+}
+
+.journal-modal-image {
+  height: 100%;
+}
+
+.journal-modal-content {
+  overflow-y: auto;
+  padding: 5.5rem 4rem 3rem;
+}
+
+.journal-modal-header {
+  text-align: center;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(23, 19, 16, 0.14);
+}
+
+.journal-modal-title {
+  font-size: clamp(2.2rem, 3vw, 3.35rem);
+  margin-bottom: 0.6rem;
+}
+
+.journal-modal-summary {
+  margin-top: 2rem;
+}
+
+.journal-modal-body {
+  margin-top: 1.5rem;
+}
+
+.journal-modal-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.journal-modal-products {
+  margin-top: 2rem;
+}
+
+.journal-modal-products h3 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.journal-modal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.journal-video-modal {
+  position: relative;
+  width: min(980px, calc(100vw - 2rem));
+  aspect-ratio: 16 / 9;
+  background: #000;
+  margin: auto;
+}
+
+.journal-video-modal iframe {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  border: 0;
 }
 
-.hero-side-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
-  z-index: 1;
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-.hero-side-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 20px;
-  color: white;
-  z-index: 2;
+@media (max-width: 1024px) {
+  .journal-post-grid,
+  .journal-loading-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .journal-mixed-section,
+  .journal-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .journal-hero-media,
+  .journal-hero-image-frame {
+    min-height: 360px;
+  }
+
+  .journal-modal {
+    grid-template-columns: 1fr;
+  }
+
+  .journal-modal-media {
+    min-height: 40vh;
+    max-height: 40vh;
+  }
+
+  .journal-modal-content {
+    padding: 4.5rem 1.5rem 2rem;
+  }
 }
 
-.hero-side-meta {
-  color: rgba(255,255,255,0.95);
-  font-size: 10px;
-  margin-bottom: 8px;
+@media (max-width: 768px) {
+  .journal-page {
+    padding: 1.5rem 0.95rem 3rem;
+  }
+
+  .journal-hero-shell {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .journal-hero-index {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-top: 0;
+  }
+
+  .journal-toolbar-head,
+  .journal-toolbar-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .journal-search {
+    width: 100%;
+  }
+
+  .journal-categories {
+    justify-content: flex-start;
+  }
+
+  .journal-post-grid,
+  .journal-product-panel,
+  .journal-modal-product-grid,
+  .journal-loading-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .journal-video-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .video-card-1,
+  .video-card-2,
+  .video-card-3,
+  .video-card-4 {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 220px;
+  }
+
+  .journal-modal {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .journal-modal-media {
+    min-height: 32vh;
+    max-height: 32vh;
+  }
 }
 
-.hero-side-title {
-  color: white;
-  line-height: 1.4;
-  font-size: 14px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+:global(body.journal-modal-open) {
   overflow: hidden;
-}
-
-/* Utility Classes */
-.letter-spacing-1 {
-  letter-spacing: 1px;
-}
-
-/* Blog Card Styles */
-.blog-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.blog-card:hover {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
-  transform: translateY(-4px);
-}
-
-.blog-card:hover .blog-image {
-  transform: scale(1.05);
-}
-
-.blog-image-wrapper {
-  overflow: hidden;
-}
-
-.blog-title-hover:hover {
-  color: #1976d2;
-}
-
-/* Filter Drawer */
-.filter-drawer {
-  position: fixed;
-  width: 350px;
-  max-width: 100vw;
-  height: 100vh;
-  visibility: hidden;
-  right: -350px;
-  top: 0;
-  bottom: 0;
-  background: #FFFBF3;
-  z-index: 1020;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.16);
-  transition: all 0.3s;
-}
-
-.filter-drawer.open {
-  right: 0;
-  visibility: visible;
-}
-
-.text-grey {
-  color: #666;
-}
-
-/* Responsive Styles */
-@media (max-width: 960px) {
-  .hero-banner-wrapper {
-    height: 450px;
-  }
-  
-  .hero-main-container {
-    height: 450px;
-  }
-  
-  .hero-left-col {
-    flex: 0 0 100%;
-    height: 450px;
-  }
-  
-  .hero-featured-card {
-    height: 450px;
-  }
-  
-  .hero-title {
-    font-size: 26px;
-  }
-  
-  .hero-featured-content {
-    padding: 30px;
-  }
-  
-  .hero-arrow {
-    width: 40px;
-    height: 40px;
-  }
-}
-
-@media (max-width: 600px) {
-  .hero-banner-wrapper {
-    height: 400px;
-  }
-  
-  .hero-main-container {
-    height: 400px;
-  }
-  
-  .hero-left-col {
-    height: 400px;
-  }
-  
-  .hero-featured-card {
-    height: 400px;
-  }
-  
-  .hero-title {
-    font-size: 20px;
-    max-width: 95%;
-  }
-  
-  .hero-featured-content {
-    padding: 24px;
-  }
-  
-  .hero-arrow {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
-  
-  .hero-nav-arrows {
-    left: 12px;
-    gap: 8px;
-  }
 }
 </style>

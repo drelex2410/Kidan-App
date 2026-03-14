@@ -42,6 +42,8 @@
 						{{ route('home') }}
                     @elseif($page->slug == 'about-us')
                         {{ route('home') }}/about
+                    @elseif($page->slug == 'journal')
+                        {{ route('home') }}/journal
 					@else
 						{{ route('home') }}/page/{{ $page->slug }}
 					@endif

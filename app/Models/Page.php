@@ -51,6 +51,10 @@ class Page extends Model
             return '/about';
         }
 
+        if ($this->slug === 'journal') {
+            return '/journal';
+        }
+
         if ($this->type === 'home_page') {
             return '/';
         }

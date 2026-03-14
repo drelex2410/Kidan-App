@@ -8,6 +8,7 @@ use App\Models\PageTranslation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 
 class PageController extends Controller
@@ -266,6 +267,20 @@ class PageController extends Controller
             'sections.*.settings.bullets.*.text' => 'nullable|string|max:255',
             'sections.*.settings.items.*.title' => 'nullable|string|max:255',
             'sections.*.settings.items.*.description' => 'nullable|string',
+            'sections.*.settings.product_source_type' => ['nullable', Rule::in(['category', 'brand'])],
+            'sections.*.settings.product_category_id' => 'nullable|exists:categories,id',
+            'sections.*.settings.product_brand_id' => 'nullable|exists:brands,id',
+            'sections.*.settings.related_products_limit' => 'nullable|integer|min:1|max:12',
+            'sections.*.settings.youtube_urls' => 'nullable|array',
+            'sections.*.settings.youtube_urls.*' => [
+                'nullable',
+                'url',
+                function ($attribute, $value, $fail) {
+                    if ($value && ! $this->extractYoutubeId($value)) {
+                        $fail(translate('Please enter a valid YouTube URL.'));
+                    }
+                },
+            ],
         ]);
     }
 
@@ -369,6 +384,8 @@ class PageController extends Controller
             ];
         }
 
+        $productSourceType = Arr::get($settings, 'product_source_type');
+
         return [
             'heading' => Arr::get($settings, 'heading', Arr::get($section, 'title')),
             'subheading' => Arr::get($settings, 'subheading', Arr::get($section, 'subtitle')),
@@ -394,6 +411,15 @@ class PageController extends Controller
             'items' => $featureItems,
             'tabs' => $tabs,
             'bullets' => $bullets,
+            'product_source_type' => $productSourceType,
+            'product_category_id' => $productSourceType === 'category' ? Arr::get($settings, 'product_category_id') : null,
+            'product_brand_id' => $productSourceType === 'brand' ? Arr::get($settings, 'product_brand_id') : null,
+            'related_products_limit' => Arr::get($settings, 'related_products_limit', 4),
+            'youtube_urls' => collect(Arr::get($settings, 'youtube_urls', []))
+                ->map(fn ($url) => is_string($url) ? trim($url) : null)
+                ->filter()
+                ->values()
+                ->all(),
         ];
     }
 
@@ -442,5 +468,34 @@ class PageController extends Controller
         }
 
         return $normalized;
+    }
+
+    private function extractYoutubeId(string $url): ?string
+    {
+        $parts = parse_url($url);
+        $host = strtolower($parts['host'] ?? '');
+        $path = trim($parts['path'] ?? '', '/');
+
+        if (in_array($host, ['youtu.be'], true) && $path !== '') {
+            return $path;
+        }
+
+        parse_str($parts['query'] ?? '', $query);
+
+        if (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com'], true)) {
+            if (!empty($query['v'])) {
+                return $query['v'];
+            }
+
+            if (str_starts_with($path, 'embed/')) {
+                return trim(substr($path, 6));
+            }
+
+            if (str_starts_with($path, 'shorts/')) {
+                return trim(substr($path, 7));
+            }
+        }
+
+        return null;
     }
 }

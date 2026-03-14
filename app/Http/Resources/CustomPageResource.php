@@ -130,6 +130,11 @@ class CustomPageResource extends JsonResource
                         'mission_text' => Arr::get($settings, 'mission_text'),
                         'quote_text' => Arr::get($settings, 'quote_text'),
                         'author' => Arr::get($settings, 'author'),
+                        'product_source_type' => Arr::get($settings, 'product_source_type'),
+                        'product_category_id' => Arr::get($settings, 'product_category_id'),
+                        'product_brand_id' => Arr::get($settings, 'product_brand_id'),
+                        'related_products_limit' => Arr::get($settings, 'related_products_limit'),
+                        'youtube_urls' => collect(Arr::get($settings, 'youtube_urls', []))->values(),
                         'gallery_images' => collect($galleryImages)->map(function ($imageId) {
                             return api_asset($imageId);
                         })->values(),

@@ -36,6 +36,16 @@ class User extends Authenticatable implements MustVerifyEmail
         'password', 'remember_token',
     ];
 
+    public function getFirstNameAttribute(): string
+    {
+        $name = trim((string) $this->name);
+        if ($name === '') {
+            return '';
+        }
+
+        return explode(' ', preg_replace('/\s+/', ' ', $name))[0] ?? '';
+    }
+
     public function wishlists()
     {
         return $this->hasMany(Wishlist::class);
