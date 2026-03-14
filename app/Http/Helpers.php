@@ -722,30 +722,7 @@ if (!function_exists('uploaded_asset')) {
 if (!function_exists('normalize_file_path')) {
     function normalize_file_path($path)
     {
-        if (blank($path)) {
-            return null;
-        }
-
-        $path = trim(str_replace('\\', '/', $path));
-
-        if (filter_var($path, FILTER_VALIDATE_URL)) {
-            return $path;
-        }
-
-        $path = ltrim($path, '/');
-
-        foreach ([
-            'public/',
-            'storage/app/public/',
-            'app/public/',
-        ] as $prefix) {
-            if (Str::startsWith($path, $prefix)) {
-                $path = Str::after($path, $prefix);
-                break;
-            }
-        }
-
-        return ltrim($path, '/');
+        return \App\Support\Uploads\UploadStorage::normalizePath($path);
     }
 }
 
@@ -759,21 +736,7 @@ if (!function_exists('my_asset')) {
      */
     function my_asset($path, $secure = null)
     {
-        $path = normalize_file_path($path);
-
-        if (blank($path)) {
-            return null;
-        }
-
-        if (filter_var($path, FILTER_VALIDATE_URL)) {
-            return $path;
-        }
-
-        if (config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3') {
-            return Storage::disk('s3')->url($path);
-        }
-
-        return app('url')->asset($path, $secure);
+        return \App\Support\Uploads\UploadStorage::publicUrl($path, $secure);
     }
 }
 
@@ -810,11 +773,11 @@ if (!function_exists('getBaseURL')) {
 if (!function_exists('getFileBaseURL')) {
     function getFileBaseURL()
     {
-        if (config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3') {
-            return env('AWS_URL') . '/';
-        } else {
-            return rtrim(app('url')->asset(''), '/') . '/';
+        if (\App\Support\Uploads\UploadStorage::usesObjectStorage()) {
+            return rtrim(\Illuminate\Support\Facades\Storage::disk(\App\Support\Uploads\UploadStorage::effectiveDisk())->url(''), '/') . '/';
         }
+
+        return rtrim(app('url')->asset(''), '/') . '/';
     }
 }
 

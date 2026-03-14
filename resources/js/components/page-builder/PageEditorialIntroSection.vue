@@ -44,8 +44,9 @@ export default {
 
 .editorial-intro-copy {
   color: var(--editorial-ink, #13110f);
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  font-size: clamp(1.06rem, 1.9vw, 1.45rem);
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.85;
 }
 
@@ -67,7 +68,7 @@ export default {
 
 .editorial-intro-copy :deep(strong) {
   color: var(--editorial-ink, #13110f);
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .editorial-intro-copy :deep(a) {
@@ -77,7 +78,7 @@ export default {
 
 @media (max-width: 599px) {
   .editorial-intro-copy {
-    font-size: 1rem;
+    font-size: var(--editorial-paragraph-size, 0.75rem);
     line-height: 1.75;
   }
 }

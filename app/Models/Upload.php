@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\Uploads\UploadStorage;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Upload extends Model
 {
@@ -33,34 +34,44 @@ class Upload extends Model
 
     public function getDisplayNameAttribute()
     {
-        return $this->file_original_name ?: translate('Unknown');
+        $name = trim((string) $this->file_original_name);
+
+        if ($name === '') {
+            return translate('Unknown');
+        }
+
+        $extension = trim((string) $this->extension);
+        if ($extension !== '') {
+            $suffix = '.' . $extension;
+            if (Str::endsWith(Str::lower($name), Str::lower($suffix))) {
+                return substr($name, 0, -strlen($suffix));
+            }
+        }
+
+        return $name;
     }
 
     public function getNormalizedFileNameAttribute()
     {
-        return normalize_file_path($this->file_name);
+        return UploadStorage::normalizePath($this->file_name);
     }
 
     public function getPreviewUrlAttribute()
     {
-        if (blank($this->normalized_file_name)) {
+        if (!$this->exists) {
             return null;
         }
 
-        if (filter_var($this->normalized_file_name, FILTER_VALIDATE_URL)) {
-            return $this->normalized_file_name;
-        }
-
-        if ($this->existsOnPublicDisk()) {
-            return Storage::disk('public')->url($this->normalized_file_name);
-        }
-
-        return my_asset($this->normalized_file_name);
+        return route('uploads.file', ['upload' => $this->id]);
     }
 
     public function getDownloadUrlAttribute()
     {
-        return $this->preview_url;
+        if (!$this->exists) {
+            return null;
+        }
+
+        return route('uploads.file', ['upload' => $this->id, 'download' => 1]);
     }
 
     public function getIsPreviewableAttribute()
@@ -81,68 +92,26 @@ class Upload extends Model
 
     public function fileExists(): bool
     {
-        if (blank($this->normalized_file_name)) {
-            return false;
-        }
-
-        if (filter_var($this->normalized_file_name, FILTER_VALIDATE_URL)) {
-            return true;
-        }
-
-        if ($this->usesS3()) {
-            return Storage::disk('s3')->exists($this->normalized_file_name);
-        }
-
-        return $this->existsOnPublicDisk() || file_exists(public_path($this->normalized_file_name));
+        return UploadStorage::exists($this->file_name);
     }
 
     public function absolutePath(): ?string
     {
-        if (blank($this->normalized_file_name) || filter_var($this->normalized_file_name, FILTER_VALIDATE_URL)) {
-            return null;
-        }
-
-        if ($this->existsOnPublicDisk()) {
-            return storage_path('app/public/' . $this->normalized_file_name);
-        }
-
-        $publicPath = public_path($this->normalized_file_name);
-        if (file_exists($publicPath)) {
-            return $publicPath;
-        }
-
-        return null;
+        return UploadStorage::absolutePath($this->file_name);
     }
 
     public function deleteStoredFile(): void
     {
-        if (blank($this->normalized_file_name)) {
-            return;
-        }
-
-        if ($this->usesS3()) {
-            Storage::disk('s3')->delete($this->normalized_file_name);
-            return;
-        }
-
-        if ($this->existsOnPublicDisk()) {
-            Storage::disk('public')->delete($this->normalized_file_name);
-            return;
-        }
-
-        $publicPath = public_path($this->normalized_file_name);
-        if (file_exists($publicPath)) {
-            @unlink($publicPath);
-        }
+        UploadStorage::delete($this->file_name);
     }
 
     protected function existsOnPublicDisk(): bool
     {
-        return !blank($this->normalized_file_name) && Storage::disk('public')->exists($this->normalized_file_name);
+        return UploadStorage::exists($this->file_name);
     }
 
     protected function usesS3(): bool
     {
-        return config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3';
+        return UploadStorage::usesObjectStorage();
     }
 }

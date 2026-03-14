@@ -27,19 +27,20 @@ export default {
 <style scoped>
 .tab-layout-basic {
   color: #171513;
-  font-family: Candara, Calibri, "Segoe UI", sans-serif;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
 }
 
 .tab-heading {
   margin: 0 0 1.1rem;
-  font-size: clamp(1.9rem, 3vw, 2rem);
+  font-size: clamp(1.5875rem, 2.2vw, 1.6875rem);
   font-weight: 700;
   line-height: 1.15;
 }
 
 .tab-body {
   max-width: 62rem;
-  font-size: clamp(1.125rem, 2.4vw, 1.5rem);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.7;
 }
 

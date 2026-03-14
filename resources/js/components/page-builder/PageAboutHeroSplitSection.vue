@@ -94,7 +94,7 @@ export default {
 .about-hero-title {
   margin: 0;
   color: var(--editorial-ink, #13110f);
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
   font-size: clamp(2.7rem, 8vw, 5.2rem);
   font-weight: 700;
   line-height: 0.92;
@@ -106,7 +106,9 @@ export default {
   margin: 0;
   max-width: 28rem;
   color: var(--editorial-muted, #6b655d);
-  font-size: clamp(1rem, 2vw, 1.28rem);
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.6;
 }
 

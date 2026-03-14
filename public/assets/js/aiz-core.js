@@ -205,7 +205,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 true
             );
         },
-        getAllUploads: function (url, search_key = null, sort_key = null) {
+        getAllUploads: function (url, search_key = null, sort_key = null, onLoaded = null) {
             $(".aiz-uploader-all").html(
                 '<div class="align-items-center d-flex h-100 justify-content-center w-100"><div class="spinner-border" role="status"></div></div>'
             );
@@ -230,6 +230,9 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 AIZ.uploader.addHiddenValue();
                 //AIZ.uploader.resetFilter();
                 AIZ.uploader.updateUploaderFiles();
+                if (typeof onLoaded === "function") {
+                    onLoaded(data);
+                }
                 if (data.next_page_url != null) {
                     AIZ.uploader.data.next_page_url = data.next_page_url;
                     $("#uploader_next_btn").removeAttr("disabled");
@@ -395,6 +398,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
 
                 if (data.length > 0) {
                     for (var i = 0; i < data.length; i++) {
+                        var displayName = data[i].display_name || data[i].file_original_name;
                         var thumb = "";
                         var previewUrl = data[i].preview_url || (AIZ.data.fileBaseUrl + data[i].file_name);
                         if (data[i].is_previewable) {
@@ -431,7 +435,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                             // "</div>" +
                             // "</div>" +
                             '<div class="card card-file aiz-uploader-select" title="' +
-                            data[i].file_original_name +
+                            displayName +
                             "." +
                             data[i].extension +
                             '" data-value="' +
@@ -443,7 +447,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                             '<div class="card-body">' +
                             '<h6 class="d-flex">' +
                             '<span class="text-truncate title">' +
-                            data[i].file_original_name +
+                            displayName +
                             "</span>" +
                             '<span class="ext flex-shrink-0">.' +
                             data[i].extension +
@@ -490,6 +494,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                 i < data.length;
                                 i++
                             ) {
+                                var displayName = data[i].display_name || data[i].file_original_name;
                                 var thumb = "";
                                 var previewUrl = data[i].preview_url || (AIZ.data.fileBaseUrl + data[i].file_name);
                                 if (data[i].is_previewable) {
@@ -504,7 +509,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                     '<div class="d-flex justify-content-between align-items-center mt-2 file-preview-item" data-id="' +
                                     data[i].id +
                                     '" title="' +
-                                    data[i].file_original_name +
+                                    displayName +
                                     "." +
                                     data[i].extension +
                                     '">' +
@@ -514,7 +519,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                     '<div class="col body">' +
                                     '<h6 class="d-flex">' +
                                     '<span class="text-truncate title">' +
-                                    data[i].file_original_name +
+                                    displayName +
                                     "</span>" +
                                     '<span class="flex-shrink-0 ext">.' +
                                     data[i].extension +
@@ -775,6 +780,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                     i < data.length;
                                     i++
                                 ) {
+                                    var displayName = data[i].display_name || data[i].file_original_name;
                                     var thumb = "";
                                     var previewUrl = data[i].preview_url || (AIZ.data.fileBaseUrl + data[i].file_name);
                                     if (data[i].is_previewable) {
@@ -789,7 +795,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                         '<div class="d-flex justify-content-between align-items-center mt-2 file-preview-item" data-id="' +
                                         data[i].id +
                                         '" title="' +
-                                        data[i].file_original_name +
+                                        displayName +
                                         "." +
                                         data[i].extension +
                                         '">' +
@@ -799,7 +805,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                         '<div class="col body">' +
                                         '<h6 class="d-flex">' +
                                         '<span class="text-truncate title">' +
-                                        data[i].file_original_name +
+                                        displayName +
                                         "</span>" +
                                         '<span class="ext flex-shrink-0">.' +
                                         data[i].extension +
@@ -1151,12 +1157,47 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                     formData: true,
                     headers: {
                         'X-CSRF-TOKEN': AIZ.data.csrf,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
-                uppy.on("upload-success", function () {
+                uppy.on("upload-success", function (file, response) {
+                    var body = response && response.body ? response.body : {};
+                    var validSuccess =
+                        body &&
+                        body.success === true &&
+                        body.id &&
+                        body.file &&
+                        body.file.preview_url;
+                    if (!validSuccess) {
+                        AIZ.plugins.notify("danger", body.message || "Upload failed.");
+                        return;
+                    }
                     AIZ.uploader.getAllUploads(
-                        AIZ.data.appUrl + "/aiz-uploader/get_uploaded_files"
+                        AIZ.data.appUrl + "/aiz-uploader/get_uploaded_files",
+                        null,
+                        null,
+                        function (data) {
+                            var records = data && data.data ? data.data : [];
+                            var wasListed = body.id && records.some(function (item) {
+                                return item.id === body.id;
+                            });
+                            if (wasListed) {
+                                AIZ.plugins.notify("success", body.message || "File uploaded successfully.");
+                            } else {
+                                AIZ.plugins.notify("danger", "Upload finished, but the new file did not appear in the refreshed list.");
+                            }
+                        }
                     );
+                });
+                uppy.on("upload-error", function (file, error, response) {
+                    var body = response && response.body ? response.body : {};
+                    AIZ.plugins.notify("danger", body.message || (error && error.message) || "Upload failed.");
+                });
+                uppy.on("complete", function (result) {
+                    if (result && result.failed && result.failed.length > 0) {
+                        AIZ.plugins.notify("danger", "One or more uploads failed.");
+                    }
                 });
             }
         },

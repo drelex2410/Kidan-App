@@ -135,6 +135,7 @@ export default {
 
 .tabs-nav {
   display: flex;
+  justify-content: center;
   gap: 1.5rem;
   overflow-x: auto;
   padding: 0 0 0.6rem;
@@ -153,8 +154,8 @@ export default {
   border-bottom: 2px solid transparent;
   background: transparent;
   color: #625b54;
-  font-family: Candara, Calibri, "Segoe UI", sans-serif;
-  font-size: clamp(1rem, 1.5vw, 1.35rem);
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-tab-font-size, clamp(0.5rem, 0.9vw, 0.675rem));
   font-weight: 400;
   line-height: 1.2;
   cursor: pointer;
@@ -174,15 +175,32 @@ export default {
 
 .tabs-panel {
   padding-top: clamp(1.75rem, 4vw, 2.55rem);
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+}
+
+.tabs-panel :deep(p),
+.tabs-panel :deep(li),
+.tabs-panel :deep(.tab-body),
+.tabs-panel :deep(.section-copy),
+.tabs-panel :deep(.section-subheading),
+.tabs-panel :deep(.partnership-list),
+.tabs-panel :deep(.media-description),
+.tabs-panel :deep(.tribe-closing),
+.tabs-panel :deep(.tribe-row-value),
+.tabs-panel :deep(.youth-feature-item p) {
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
 }
 
 @media (max-width: 767px) {
   .tabs-nav {
     gap: 1rem;
+    justify-content: flex-start;
   }
 
   .tabs-nav-button {
-    font-size: 0.92rem;
+    font-size: var(--editorial-tab-font-size, 0.675rem);
     padding-bottom: 0.75rem;
   }
 

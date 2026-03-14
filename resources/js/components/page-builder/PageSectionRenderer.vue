@@ -160,7 +160,11 @@ export default {
   --editorial-accent: #9d150d;
   --editorial-panel-dark: #4c3022;
   --editorial-panel-soft: #dacbaa;
+  --editorial-font-family: Candara, Calibri, "Segoe UI", sans-serif;
+  --editorial-paragraph-size: clamp(0.75rem, 1.2vw, 0.9375rem);
+  --editorial-tab-font-size: clamp(0.675rem, 0.95vw, 0.8125rem);
   background: var(--editorial-bg);
   color: var(--editorial-ink);
+  font-family: var(--editorial-font-family);
 }
 </style>

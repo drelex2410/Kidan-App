@@ -48,7 +48,7 @@ export default {
 .editorial-quote-text {
   margin: 0;
   color: var(--editorial-ink, #13110f);
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
   font-size: clamp(1.75rem, 3.2vw, 3rem);
   font-weight: 400;
   line-height: 1.45;
@@ -57,7 +57,8 @@ export default {
 .editorial-quote-author {
   margin-top: 1.5rem;
   color: var(--editorial-muted, #6b655d);
-  font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
   font-style: normal;
 }
 

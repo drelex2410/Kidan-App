@@ -69,11 +69,7 @@
             <div class="row gutters-5">
                 @foreach ($all_uploads as $key => $file)
                     @php
-                        if ($file->file_original_name == null) {
-                            $file_name = translate('Unknown');
-                        } else {
-                            $file_name = $file->file_original_name;
-                        }
+                        $file_name = $file->display_name;
                     @endphp
                     <div class="col-auto w-140px w-lg-220px">
                         <div class="aiz-file-box">

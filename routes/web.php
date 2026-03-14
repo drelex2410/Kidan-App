@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\AizUploadController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Payment\FlutterwavePaymentController;
@@ -101,6 +102,7 @@ Route::group(['prefix' => 'payment'], function () {
 
 Route::any('/social-login/redirect/{provider}', [LoginController::class, 'redirectToProvider'])->name('social.login');
 Route::get('/social-login/{provider}/callback', [LoginController::class, 'handleProviderCallback'])->name('social.callback');
+Route::get('/uploads/{upload}/file', [AizUploadController::class, 'serve'])->name('uploads.file');
 
 
 Route::get('/product/{slug}', [HomeController::class, 'index'])->name('product');

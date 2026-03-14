@@ -92,7 +92,7 @@ export default {
 
 .image-content-panel-title {
   margin: 0 0 1rem;
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
   font-size: clamp(2rem, 3vw, 2.7rem);
   font-weight: 700;
   line-height: 1.05;
@@ -100,7 +100,9 @@ export default {
 
 .image-content-panel-subtitle {
   margin: 0 0 1rem;
-  font-size: 1rem;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.7;
 }
 
@@ -115,6 +117,9 @@ export default {
 .image-content-panel-list li {
   position: relative;
   padding-left: 1.35rem;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.6;
 }
 
@@ -127,7 +132,9 @@ export default {
 
 .image-content-panel-body {
   margin: 0;
-  font-size: 1rem;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.85;
 }
 

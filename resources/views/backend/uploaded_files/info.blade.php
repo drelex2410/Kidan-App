@@ -1,7 +1,7 @@
 <div >
 	<div class="form-group">
 		<label>{{ translate('File Name') }}</label>
-		<input type="text" class="form-control" value="{{ $file->file_original_name.'.'.$file->	extension }}" disabled>
+		<input type="text" class="form-control" value="{{ $file->display_name.'.'.$file->extension }}" disabled>
 	</div>
 	<div class="form-group">
 		<label>{{ translate('File Type') }}</label>
@@ -21,11 +21,7 @@
 	</div>
 	<div class="form-group text-center">
 		@php
-			if($file->file_original_name == null){
-			    $file_name = translate('Unknown');
-			}else{
-				$file_name = $file->file_original_name;
-			}
+			$file_name = $file->display_name;
 		@endphp
 		<a class="btn btn-secondary" href="{{ $file->download_url }}" target="_blank" download="{{ $file_name }}.{{ $file->extension }}">{{ translate('Download') }}</a>
 	</div>

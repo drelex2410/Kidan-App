@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UploadResource;
 use App\Models\Upload;
+use App\Support\Uploads\UploadStorage;
 use Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Response;
 
 class AizUploadController extends Controller
@@ -106,76 +109,83 @@ class AizUploadController extends Controller
 
     public function upload(Request $request)
     {
-        $type = array(
-            "jpg" => "image",
-            "jpeg" => "image",
-            "png" => "image",
-            "svg" => "image",
-            "webp" => "image",
-            "gif" => "image",
-            "mp4" => "video",
-            "mpg" => "video",
-            "mpeg" => "video",
-            "webm" => "video",
-            "ogg" => "video",
-            "avi" => "video",
-            "mov" => "video",
-            "flv" => "video",
-            "swf" => "video",
-            "mkv" => "video",
-            "wmv" => "video",
-            "wma" => "audio",
-            "aac" => "audio",
-            "wav" => "audio",
-            "mp3" => "audio",
-            "zip" => "archive",
-            "rar" => "archive",
-            "7z" => "archive",
-            "doc" => "document",
-            "txt" => "document",
-            "docx" => "document",
-            "pdf" => "document",
-            "csv" => "document",
-            "xml" => "document",
-            "ods" => "document",
-            "xlr" => "document",
-            "xls" => "document",
-            "xlsx" => "document"
-        );
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Please sign in again and retry the upload.'),
+            ], 401);
+        }
 
-        if ($request->hasFile('aiz_file')) {
+        $validator = Validator::make($request->all(), [
+            'aiz_file' => [
+                'required',
+                'file',
+                'max:' . config('uploads.max_file_size_kb'),
+                'mimes:' . UploadStorage::allowedExtensionsString(),
+            ],
+        ], [
+            'aiz_file.required' => translate('No file was uploaded.'),
+            'aiz_file.file' => translate('The uploaded payload is invalid.'),
+            'aiz_file.max' => translate('The file exceeds the maximum allowed size.'),
+            'aiz_file.mimes' => translate('This file type is not supported.'),
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first('aiz_file') ?: translate('The file could not be uploaded.'),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $file = $request->file('aiz_file');
+        $extension = strtolower($file->getClientOriginalExtension());
+        $type = UploadStorage::typeForExtension($extension);
+
+        if (env('DEMO_MODE') == 'On' && $type === 'archive') {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Archive uploads are disabled in demo mode.')
+            ], 422);
+        }
+
+        if ($type === null) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('This file type is not supported.')
+            ], 422);
+        }
+
+        $storedPath = null;
+
+        try {
             $upload = new Upload;
-            $upload->file_original_name = null;
-            $upload->extension = $request->file('aiz_file')->getClientOriginalExtension();
-            if (
-                env('DEMO_MODE') == 'On' &&
-                isset($type[$extension]) &&
-                $type[$extension] == 'archive'
-            ) {
-                return '{}';
+            $upload->file_original_name = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $upload->extension = $extension;
+            $storedPath = UploadStorage::store($file);
+            $upload->file_name = $storedPath;
+            $upload->user_id = Auth::id();
+            $upload->type = $type;
+            $upload->file_size = $file->getSize();
+            $upload->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => translate('File uploaded successfully.'),
+                'id' => $upload->id,
+                'file' => new UploadResource($upload),
+            ]);
+        } catch (\Throwable $e) {
+            if ($storedPath) {
+                UploadStorage::delete($storedPath);
             }
-            if (isset($type[$upload->extension])) {
 
+            report($e);
 
-                $arr = explode('.', $request->file('aiz_file')->getClientOriginalName());
-
-                for ($i = 0; $i < count($arr) - 1; $i++) {
-                    if ($i == 0) {
-                        $upload->file_original_name .= $arr[$i];
-                    } else {
-                        $upload->file_original_name .= "." . $arr[$i];
-                    }
-                }
-
-                $upload->file_name = $request->file('aiz_file')->store('uploads/all', config('filesystems.default'));
-                $upload->user_id = Auth::user()->id;
-
-                $upload->type = $type[$upload->extension];
-
-                $upload->file_size = $request->file('aiz_file')->getSize();
-                $upload->save();
-            }
-            return '{}';
+            return response()->json([
+                'success' => false,
+                'message' => translate('The file could not be uploaded. Please try again.'),
+            ], 500);
         }
     }
 
@@ -204,7 +214,7 @@ class AizUploadController extends Controller
                     break;
             }
         }
-        return $uploads->paginate(60)->appends(request()->query());
+        return UploadResource::collection($uploads->paginate(60)->appends(request()->query()));
     }
     public function uploaded_files()
     {
@@ -254,7 +264,9 @@ class AizUploadController extends Controller
     {
         $ids = explode(',', $request->ids);
         $files = Upload::whereIn('id', $ids)->get();
-        return $files;
+        return $files->map(function (Upload $file) use ($request) {
+            return (new UploadResource($file))->resolve($request);
+        })->values();
     }
 
     //Download project attachment
@@ -262,8 +274,8 @@ class AizUploadController extends Controller
     {
         $project_attachment = Upload::find($id);
         try {
-            if ($project_attachment && ($project_attachment->download_url && filter_var($project_attachment->download_url, FILTER_VALIDATE_URL)) && (config('filesystems.default') === 's3' || env('FILESYSTEM_DRIVER') === 's3')) {
-                return redirect()->away($project_attachment->download_url);
+            if ($project_attachment && UploadStorage::usesObjectStorage()) {
+                return redirect()->away(my_asset($project_attachment->normalized_file_name));
             }
 
             $file_path = $project_attachment?->absolutePath();
@@ -276,6 +288,39 @@ class AizUploadController extends Controller
             return back();
         }
     }
+
+    public function serve(Upload $upload, Request $request)
+    {
+        if (blank($upload->normalized_file_name)) {
+            abort(404);
+        }
+
+        if (filter_var($upload->normalized_file_name, FILTER_VALIDATE_URL)) {
+            return redirect()->away($upload->normalized_file_name);
+        }
+
+        if (UploadStorage::usesObjectStorage()) {
+            return redirect()->away(my_asset($upload->normalized_file_name));
+        }
+
+        $filePath = $upload->absolutePath();
+        if (!$filePath || !file_exists($filePath)) {
+            abort(404);
+        }
+
+        if ($request->boolean('download')) {
+            return response()->download(
+                $filePath,
+                $upload->display_name . '.' . $upload->extension
+            );
+        }
+
+        return response()->file($filePath, [
+            'Content-Type' => mime_content_type($filePath) ?: 'application/octet-stream',
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    }
+
     //Download project attachment
     public function file_info(Request $request)
     {

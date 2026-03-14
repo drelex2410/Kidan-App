@@ -53,7 +53,7 @@ export default {
 
 .section-heading {
   margin: 0 0 1rem;
-  font-size: clamp(1.9rem, 3vw, 2rem);
+  font-size: clamp(1.5875rem, 2.2vw, 1.6875rem);
   font-weight: 700;
   line-height: 1.15;
 }

@@ -84,7 +84,7 @@ export default {
 
 .vision-mission-block h2 {
   margin: 0 0 0.9rem;
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
   font-size: clamp(1.75rem, 2.8vw, 2.45rem);
   font-weight: 700;
   line-height: 1.05;
@@ -92,7 +92,9 @@ export default {
 
 .vision-mission-block p {
   margin: 0;
-  font-size: 1rem;
+  font-family: var(--editorial-font-family, Candara, Calibri, "Segoe UI", sans-serif);
+  font-size: var(--editorial-paragraph-size, clamp(0.5625rem, 1.2vw, 0.75rem));
+  font-weight: 400;
   line-height: 1.8;
 }
 
